@@ -22,7 +22,7 @@ using OpenMetaverse;
 using Nini.Config;
 using log4net;
 
-namespace OpenSim.Services.WebRtcVoiceService
+namespace WebRtcVoice
  {
     public class WebRtcJanusService : ServiceBase, IWebRtcVoiceService
     {

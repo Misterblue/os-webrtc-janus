@@ -15,7 +15,7 @@ using OpenSim.Framework;
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 
-namespace OpenSim.Services.Interfaces
+namespace WebRtcVoice
 {
     // Presents interface for the voice capabilities to connect the user
     // to the voice server.

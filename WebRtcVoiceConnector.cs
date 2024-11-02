@@ -22,7 +22,7 @@ using OpenMetaverse.StructuredData;
 using log4net;
 using Nini.Config;
 
-namespace OpenSim.Services.Connectors.Voice
+namespace WebRtcVoice
 {
     public class WebRtcVoiceConnector : IWebRtcVoiceService
     {

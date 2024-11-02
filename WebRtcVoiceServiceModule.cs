@@ -23,7 +23,7 @@ using Mono.Addins;
 using log4net;
 using Nini.Config;
 
-namespace OpenSim.Region.CoreModules
+namespace WebRtcVoice
 {
     /// <summary>
     /// This module exists to load the WebRtcVoiceService into the region.

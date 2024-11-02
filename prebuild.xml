@@ -1,5 +1,5 @@
     <Project
-            name="os-webrtc-janus"
+            name="WebRtcVoice"
             path="addon-modules/os-webrtc-janus"
             type="Library">
 

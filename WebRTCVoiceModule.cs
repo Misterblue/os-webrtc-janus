@@ -33,7 +33,7 @@ using OSDMap = OpenMetaverse.StructuredData.OSDMap;
 using log4net;
 using Nini.Config;
 
-namespace OpenSim.Region.OptionalModules.Avatar.Voice.WebRtcVoice
+namespace WebRtcVoice
 {
     /// <summary>
     /// This module provides the WebRTC voice interface for viewer clients..

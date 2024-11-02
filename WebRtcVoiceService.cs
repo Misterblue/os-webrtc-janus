@@ -24,7 +24,7 @@ using OpenSim.Framework;
 using Nini.Config;
 using log4net;
 
-namespace OpenSim.Services.WebRtcVoiceService
+namespace WebRtcVoice
 {
     public class WebRtcVoiceService : ServiceBase, IWebRtcVoiceService
     {
