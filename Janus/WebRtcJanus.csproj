@@ -91,11 +91,6 @@
       <HintPath>/home/opensim/opensim-mb/bin/OpenMetaverseTypes.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="WebRtcVoice" >
-      <Name>WebRtcVoice</Name>
-      <HintPath>/home/opensim/opensim-mb/bin/WebRtcVoice.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>
@@ -107,6 +102,7 @@
     <ProjectReference Include="../../../OpenSim/Services/Base/OpenSim.Services.Base.csproj" />
     <ProjectReference Include="../../../OpenSim/Services/Connectors/OpenSim.Services.Connectors.csproj" />
     <ProjectReference Include="../../../OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj" />
+    <ProjectReference Include="../WebRtcVoice/WebRtcVoice.csproj" />
   </ItemGroup>
 
   <ItemGroup>

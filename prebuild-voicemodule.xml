@@ -1,6 +1,6 @@
     <Project
-            name="WebRtcVoice"
-            path="addon-modules/os-webrtc-janus/WebRtcVoice"
+            name="WebRtcVoiceModule"
+            path="addon-modules/os-webrtc-janus/WebRtcVoiceModule"
             type="Library">
 
       <Configuration name="Debug">
@@ -29,6 +29,8 @@
       <Reference name="OpenMetaverse"/>
       <Reference name="OpenMetaverseTypes"/>
       <Reference name="OpenMetaverse.StructuredData"/>
+
+      <Reference name="WebRtcVoice"/>
 
       <Reference name="Mono.Addins" path ="../../../bin"/>
 
