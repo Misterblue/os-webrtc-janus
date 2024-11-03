@@ -1,22 +1,22 @@
     <Project
-            name="WebRtcVoice"
-            path="addon-modules/os-webrtc-janus"
+            name="WebRtcJanus"
+            path="addon-modules/os-webrtc-janus/Janus"
             type="Library">
 
       <Configuration name="Debug">
         <Options>
-          <OutputPath>../../bin/</OutputPath>
+          <OutputPath>../../../bin/</OutputPath>
           <AllowUnsafe>true</AllowUnsafe>
         </Options>
       </Configuration>
       <Configuration name="Release">
         <Options>
-          <OutputPath>../../bin/</OutputPath>
+          <OutputPath>../../../bin/</OutputPath>
           <AllowUnsafe>true</AllowUnsafe>
         </Options>
       </Configuration>
 
-      <ReferencePath>../../bin/</ReferencePath>
+      <ReferencePath>../../../bin/</ReferencePath>
       <Reference name="OpenSim.Framework"/>
       <Reference name="OpenSim.Framework.Console"/>
       <Reference name="OpenSim.Framework.Servers.HttpServer"/>
@@ -30,7 +30,9 @@
       <Reference name="OpenMetaverseTypes"/>
       <Reference name="OpenMetaverse.StructuredData"/>
 
-      <Reference name="Mono.Addins" path ="../../bin"/>
+      <Reference name="WebRtcVoice"/>
+
+      <Reference name="Mono.Addins" path ="../../../bin"/>
 
       <Reference name="Nini"/>
       <Reference name="log4net"/>

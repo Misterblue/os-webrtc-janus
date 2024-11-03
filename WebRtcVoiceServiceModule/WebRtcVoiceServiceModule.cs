@@ -87,7 +87,7 @@ namespace WebRtcVoice
         // ISharedRegionModule.Name
         public string Name
         {
-            get { return "WebRtcVoiceModule"; }
+            get { return "WebRtcVoiceServiceModule"; }
         }
 
         // ISharedRegionModule.AddRegion
