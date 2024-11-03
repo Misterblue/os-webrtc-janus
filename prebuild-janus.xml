@@ -1,5 +1,5 @@
     <Project
-            name="WebRtcJanus"
+            name="WebRtcJanusService"
             path="addon-modules/os-webrtc-janus/Janus"
             type="Library">
 
