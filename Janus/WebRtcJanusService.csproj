@@ -6,7 +6,7 @@
     <OutputType>Library</OutputType>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <ImplicitUsings>disable</ImplicitUsings>
-    <AssemblyName>WebRtcVoice</AssemblyName>
+    <AssemblyName>WebRtcJanusService</AssemblyName>
     <Deterministic>true</Deterministic>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <GenerateDependencyFile>false</GenerateDependencyFile>
@@ -102,16 +102,20 @@
     <ProjectReference Include="../../../OpenSim/Services/Base/OpenSim.Services.Base.csproj" />
     <ProjectReference Include="../../../OpenSim/Services/Connectors/OpenSim.Services.Connectors.csproj" />
     <ProjectReference Include="../../../OpenSim/Services/Interfaces/OpenSim.Services.Interfaces.csproj" />
+    <ProjectReference Include="../WebRtcVoice/WebRtcVoice.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="WebRtcVoiceService.cs">
+    <Compile Include="WebRtcJanusService.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="WebRtcVoiceConnector.cs">
+    <Compile Include="JanusSession.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="IWebRtcVoiceService.cs">
+    <Compile Include="JanusMessages.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="JanusComm.cs">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
