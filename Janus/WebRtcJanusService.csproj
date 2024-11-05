@@ -118,5 +118,11 @@
     <Compile Include="JanusComm.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="JanusRoom.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="JanusPluginHandle.cs">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

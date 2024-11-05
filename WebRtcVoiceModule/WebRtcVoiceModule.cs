@@ -273,8 +273,7 @@ namespace WebRtcVoice
                 if (logout is OSDBoolean lob && lob)
                 {
                     m_log.DebugFormat("[{0}][ProvisionVoice]: avatar \"{1}\": logout", logHeader, agentID);
-                    response.RawBuffer = Util.UTF8.GetBytes("<llsd><undef /></llsd>");
-                    return;
+                    // The logout request is handled by the voice service (to tear down the connection)
                 }
             }
 
@@ -290,9 +289,10 @@ namespace WebRtcVoice
             OSDMap resp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene);
 
             // TODO: check for erros and package the response
+            string xmlResp = OSDParser.SerializeLLSDXmlString(resp);
 
             response.StatusCode = (int)HttpStatusCode.OK;
-            response.RawBuffer = Util.UTF8.GetBytes("<llsd><undef /></llsd>");
+            response.RawBuffer = Util.UTF8.GetBytes(xmlResp);
             return;
         }
 

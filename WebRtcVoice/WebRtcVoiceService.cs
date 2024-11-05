@@ -91,12 +91,42 @@ namespace WebRtcVoice
 
         public OSDMap ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
-            throw new System.NotImplementedException();
+            if (pRequest.TryGetValue("channel_type", out OSD channelType))
+            {
+                if (channelType.AsString() == "local")
+                {
+                    return m_spacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene);
+                }
+                else
+                {
+                    return m_nonSpacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene);
+                }
+            }
+            else
+            {
+                m_log.ErrorFormat("{0} ProvisionVoiceAccountRequest: no channel_type in request", LogHeader);
+            }
+            return null;
         }
 
         public OSDMap VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
-            throw new System.NotImplementedException();
+            if (pRequest.TryGetValue("channel_type", out OSD channelType))
+            {
+                if (channelType.AsString() == "local")
+                {
+                    return m_spacialVoiceService.VoiceSignalingRequest(pRequest, pUserID, pScene);
+                }
+                else
+                {
+                    return m_nonSpacialVoiceService.VoiceSignalingRequest(pRequest, pUserID, pScene);
+                }
+            }
+            else
+            {
+                m_log.ErrorFormat("{0} VoiceSignalingRequest: no channel_type in request", LogHeader);
+            }
+            return null;
         }
     }
 }

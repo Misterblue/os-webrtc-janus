@@ -55,6 +55,7 @@ namespace WebRtcVoice
             return m_message.ToString();
         }
     }
+    // ==============================================================
     public class JanusMessageReq : JanusMessage
     {
         public JanusMessageReq(string pType) : base(pType)
@@ -66,6 +67,7 @@ namespace WebRtcVoice
         }
     }
 
+    // ==============================================================
     public class JanusMessageResp : JanusMessage
     {
         public JanusMessageResp() : base()
@@ -147,14 +149,83 @@ namespace WebRtcVoice
                     if (data is OSDMap)
                     {
                         var theId = (data as OSDMap)["id"];
+                        // The JSON response gives a long number (not a string)
+                        //    and the ODMap conversion interprets it as a long (OSDLong).
+                        // If one just does a "ToString()" on the OSD object, you
+                        //    get an interpretation of the binary value.
                         ret = theId.AsLong().ToString();
                     }
             }
             return ret;
         }}  
     }
-
     // ==============================================================
+    public class SessionDestroyReq : JanusMessageReq
+    {
+        public SessionDestroyReq() : base("destroy")
+        {
+            // Doesn't include the session ID because it is the URI
+        }
+    }   
+    // ==============================================================
+    public class AttachPluginReq : JanusMessageReq
+    {
+        public AttachPluginReq(string pPlugin) : base("attach")
+        {
+            m_message["plugin"] = pPlugin;
+        }
+    }
+    public class AttachPluginResp : JanusMessageResp
+    {
+        public AttachPluginResp(JanusMessageResp pResp) : base(pResp.RawBody)
+        { }
+        public string pluginId { get {
+            string ret = String.Empty;
+            if (m_message.ContainsKey("data"))
+            {
+                var data = m_message["data"];
+                if (data is OSDMap)
+                {
+                    var theId = (data as OSDMap)["id"];
+                    ret = theId.AsLong().ToString();
+                }
+            }
+            return ret;
+        }}
+    }
+    // ==============================================================
+    public class DetachPluginReq : JanusMessageReq
+    {
+        public DetachPluginReq() : base("detach")
+        {
+            // Doesn't include the plugin ID because it is the URI
+        }
+    }
+    // ==============================================================
+    public class PluginMsgReq : JanusMessageReq
+    {
+        private OSDMap m_body = new OSDMap();
+        public PluginMsgReq() : base("message")
+        {
+            m_message["body"] = m_body;
+        }
+        public void AddString(string pKey, string pValue)
+        {
+            m_body[pKey] = pValue;
+        }
+        public void AddInt(string pKey, int pValue)
+        {
+            m_body[pKey] = pValue;
+        }
+        public void AddBool(string pKey, bool pValue)
+        {
+            m_body[pKey] = pValue;
+        }
+        public void AddOSD(string pKey, OSD pValue)
+        {
+            m_body[pKey] = pValue;
+        }
+    }
     // ==============================================================
     public class EventResp : JanusMessageResp
     {

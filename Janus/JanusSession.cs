@@ -55,6 +55,17 @@ namespace WebRtcVoice
             }
         }
 
+        // Send a request to the Janus server within the session.
+        public Task<JanusMessageResp> PostToJanus(JanusMessageReq pReq)
+        {
+            return _JanusComm.PostToJanus(pReq, SessionUri);
+        }
+
+        public Task<JanusMessageResp> PostToJanus(JanusMessageReq pReq, string pUri)
+        {
+            return _JanusComm.PostToJanus(pReq, pUri);
+        }
+
         /// <summary>
         /// Make the create session request to the Janus server, get the
         /// sessionID and return TRUE if successful.
@@ -109,6 +120,22 @@ namespace WebRtcVoice
                                 case "event":
                                     m_log.DebugFormat("{0} EventLongPoll: event {1}", LogHeader, resp.ToString());
                                     // TODO: call event handler
+                                    break;
+                                case "webrtcup":
+                                    //  ICE and DTLS succeeded, and so Janus correctly established a PeerConnection with the user/application;
+                                    m_log.DebugFormat("{0} EventLongPoll: error {1}", LogHeader, resp.ToString());
+                                    break;
+                                case "media":
+                                    // Janus is receiving (receiving: true/false) audio/video (type: "audio/video") on this PeerConnection;
+                                    m_log.DebugFormat("{0} EventLongPoll: error {1}", LogHeader, resp.ToString());
+                                    break;
+                                case "slowlink":
+                                    // Janus detected a slowlink (uplink: true/false) on this PeerConnection;
+                                    m_log.DebugFormat("{0} EventLongPoll: error {1}", LogHeader, resp.ToString());
+                                    break;
+                                case "hangup":
+                                    // The PeerConnection was closed, either by the user/application or by Janus itself;
+                                    m_log.DebugFormat("{0} EventLongPoll: error {1}", LogHeader, resp.ToString());
                                     break;
                                 case "keepalive":
                                     // These should happen every 30 seconds

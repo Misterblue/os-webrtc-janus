@@ -38,6 +38,9 @@ namespace WebRtcVoice
         private string _JanusAdminURI = String.Empty;
         private string _JanusAdminToken = String.Empty;
 
+        private JanusSession _JanusSession;
+        private JanusPluginHandle _AudioBridge;
+
         public WebRtcJanusService(IConfigSource pConfig) : base(pConfig)
         {
             _log.DebugFormat("{0} WebRtcJanusService constructor", LogHeader);
@@ -91,10 +94,21 @@ namespace WebRtcVoice
                 if (_JanusComm is not null)
                 {
                     _log.DebugFormat("{0} JanusComm created", LogHeader);
-                    JanusSession _JanusSession = new JanusSession(_JanusComm);
+                    _JanusSession = new JanusSession(_JanusComm);
                     if (await _JanusSession.CreateSession())
                     {
                         _log.DebugFormat("{0} JanusSession created", LogHeader);
+                        // Once the session is created, create a handle to the plugin for rooms
+                        _AudioBridge = new JanusPluginHandle(_JanusSession);
+                        if (await _AudioBridge.AttachPlugin("janus.plugin.audiobridge"))
+                        {
+                            _log.DebugFormat("{0} AudioBridgePluginHandle created", LogHeader);
+                            // Requests through the capabilities will create rooms
+                        }
+                        else
+                        {
+                            _log.ErrorFormat("{0} JanusPluginHandle not created", LogHeader);
+                        }
                     }
                     else
                     {
