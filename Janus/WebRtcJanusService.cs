@@ -39,7 +39,7 @@ namespace WebRtcVoice
         private string _JanusAdminToken = String.Empty;
 
         private JanusSession _JanusSession;
-        private JanusPluginHandle _AudioBridge;
+        private JanusAudioBridge _AudioBridge;
 
         public WebRtcJanusService(IConfigSource pConfig) : base(pConfig)
         {
@@ -99,8 +99,9 @@ namespace WebRtcVoice
                     {
                         _log.DebugFormat("{0} JanusSession created", LogHeader);
                         // Once the session is created, create a handle to the plugin for rooms
-                        _AudioBridge = new JanusPluginHandle(_JanusSession);
-                        if (await _AudioBridge.AttachPlugin("janus.plugin.audiobridge"))
+
+                        _AudioBridge = new JanusAudioBridge(_JanusSession);
+                        if (await _AudioBridge.Activate(_Config))
                         {
                             _log.DebugFormat("{0} AudioBridgePluginHandle created", LogHeader);
                             // Requests through the capabilities will create rooms
@@ -120,20 +121,72 @@ namespace WebRtcVoice
                     _log.ErrorFormat("{0} JanusComm not created", LogHeader);
 
                 }
-            
+
             });
         }
 
+        // The pRequest parameter is a straight conversion of the JSON request from the client.
+        // This is the logic that takes the client's request and converts it into
+        //     operations on rooms in the audio bridge.
         // IWebRtcVoiceService.ProvisionVoiceAccountRequest
         public OSDMap ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
-            throw new System.NotImplementedException();
+            OSDMap ret = null;
+            if (_AudioBridge is not null)
+            {
+                // TODO: check for logout=true
+                // need to keep count of users in a room to know when to close a room
+
+                // Get the parameters that select the room
+                // To get here, voice_server_type has already been checked to be 'webrtc' and channel_type='local'
+                int parcel_local_id = pRequest.ContainsKey("parcel_id") ? pRequest["parcel_id"].AsInteger() : -999;
+                string channel_type = pRequest["channel_type"].AsString();
+                string voice_server_type = pRequest["voice_server_type"].AsString();
+
+                if (pRequest.ContainsKey("jsep") && pRequest["jsep"] is OSDMap jsep)
+                {
+                    // The jsep is the SDP from the client. This is the client's request to connect to the audio bridge.
+                    string jsepType = jsep["type"].AsString();
+                    string jsepSdp = jsep["sdp"].AsString();
+                    if (jsepType == "offer")
+                    {
+                        _log.DebugFormat("{0} ProvisionVoiceAccountRequest: jsep type={1} sdp={2}", LogHeader, jsepType, jsepSdp);
+                        // The audio bridge will create a room for the client and return the room ID
+                        JanusRoom room = AllocateRoom(pUserID, parcel_local_id);
+
+                    }
+                    else
+                    {
+                        _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: jsep type={1} not offer", LogHeader, jsepType);
+                    }
+                }
+                else
+                {
+                    _log.DebugFormat("{0} ProvisionVoiceAccountRequest: no jsep", LogHeader);
+                }
+            }
+            else
+            {
+                _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: no JanusAudioBridge", LogHeader);
+            }
+            return ret;
         }
 
         // IWebRtcVoiceService.VoiceAccountBalanceRequest
         public OSDMap VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             throw new System.NotImplementedException();
+        }
+
+        private JanusRoom AllocateRoom(UUID pUserID, int pParcelLocalID)
+        {
+            JanusRoom ret = null;
+            if (_AudioBridge is not null)
+            {
+                // The audio bridge will create a room for the client and return the room ID
+                // ret = await _AudioBridge.Create(pUserID, pParcelLocalID);
+            }
+            return ret;
         }
     }
  }
