@@ -21,6 +21,7 @@ using OpenMetaverse.StructuredData;
 
 using log4net;
 using Nini.Config;
+using System.Threading.Tasks;
 
 namespace WebRtcVoice
 {
@@ -33,12 +34,12 @@ namespace WebRtcVoice
             // Nothing to do
         }
 
-        public OSDMap ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             throw new NotImplementedException();
         }
 
-        public OSDMap VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             throw new NotImplementedException();
         }

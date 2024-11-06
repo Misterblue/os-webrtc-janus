@@ -14,6 +14,7 @@ using OpenSim.Framework;
 
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
+using System.Threading.Tasks;
 
 namespace WebRtcVoice
 {
@@ -24,8 +25,8 @@ namespace WebRtcVoice
         // The user is requesting a voice connection. The message contains the offer
         //     from the user and we must return the answer.
         // If there are problems, the returned map will contain an error message.
-        public OSDMap ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene);
+        public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene);
 
-        public OSDMap VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene);
+        public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene);
     }
 }

@@ -23,6 +23,7 @@ using OpenSim.Framework;
 
 using Nini.Config;
 using log4net;
+using System.Threading.Tasks;
 
 namespace WebRtcVoice
 {
@@ -89,7 +90,7 @@ namespace WebRtcVoice
             }
         }
 
-        public OSDMap ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             if (pRequest.TryGetValue("channel_type", out OSD channelType))
             {
@@ -109,7 +110,7 @@ namespace WebRtcVoice
             return null;
         }
 
-        public OSDMap VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             if (pRequest.TryGetValue("channel_type", out OSD channelType))
             {

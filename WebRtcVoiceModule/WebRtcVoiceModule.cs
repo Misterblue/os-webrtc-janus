@@ -286,7 +286,7 @@ namespace WebRtcVoice
             }
 
             m_log.DebugFormat("{0}[ProvisionVoice]: message: {1}", logHeader, map.ToString());
-            OSDMap resp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene);
+            OSDMap resp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene).Result;
 
             // TODO: check for erros and package the response
             string xmlResp = OSDParser.SerializeLLSDXmlString(resp);
@@ -348,7 +348,7 @@ namespace WebRtcVoice
             }
 
             m_log.DebugFormat("{0}[VoiceSignalingRequest]: message: {1}", logHeader, map.ToString());
-            OSDMap resp = voiceService.VoiceSignalingRequest(map, agentID, scene);
+            OSDMap resp = voiceService.VoiceSignalingRequest(map, agentID, scene).Result;
 
             // TODO: check for erros and package the response
             m_log.DebugFormat("{0}[VoiceSignalingRequest]: message: {1}", logHeader, map.ToString());

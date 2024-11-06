@@ -129,7 +129,7 @@ namespace WebRtcVoice
         // This is the logic that takes the client's request and converts it into
         //     operations on rooms in the audio bridge.
         // IWebRtcVoiceService.ProvisionVoiceAccountRequest
-        public OSDMap ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public async Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             OSDMap ret = null;
             if (_AudioBridge is not null)
@@ -152,7 +152,7 @@ namespace WebRtcVoice
                     {
                         _log.DebugFormat("{0} ProvisionVoiceAccountRequest: jsep type={1} sdp={2}", LogHeader, jsepType, jsepSdp);
                         // The audio bridge will create a room for the client and return the room ID
-                        JanusRoom room = AllocateRoom(pUserID, parcel_local_id);
+                        JanusRoom room = await AllocateRoom(pUserID, parcel_local_id);
 
                     }
                     else
@@ -173,12 +173,12 @@ namespace WebRtcVoice
         }
 
         // IWebRtcVoiceService.VoiceAccountBalanceRequest
-        public OSDMap VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             throw new System.NotImplementedException();
         }
 
-        private JanusRoom AllocateRoom(UUID pUserID, int pParcelLocalID)
+        private async Task<JanusRoom> AllocateRoom(UUID pUserID, int pParcelLocalID)
         {
             JanusRoom ret = null;
             if (_AudioBridge is not null)
