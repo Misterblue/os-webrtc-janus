@@ -36,10 +36,10 @@ namespace WebRtcVoice
         public string RoomUri { get; private set; }
         private bool IsConnected => !String.IsNullOrEmpty(RoomId);
 
-        private JanusPluginHandle _AudioBridge;
+        private JanusPlugin _AudioBridge;
 
         // Wrapper around the session connection to Janus-gateway
-        public JanusRoom(JanusPluginHandle pAudioBridge)
+        public JanusRoom(JanusPlugin pAudioBridge)
         {
             m_log.DebugFormat("{0} JanusRoom constructor", LogHeader);
             _AudioBridge = pAudioBridge;
@@ -63,7 +63,7 @@ namespace WebRtcVoice
             try
             {
                 /*
-                var resp = await _AudioBridge.PostToJanus(new AttachPluginReq(pPluginName));
+                var resp = await _AudioBridge.PostToSession(new AttachPluginReq(pPluginName));
                 if (resp is not null && resp.isSuccess)
                 {
                     var handleResp = new AttachPluginResp(resp);

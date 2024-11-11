@@ -27,28 +27,18 @@ using System.Threading.Tasks;
 namespace WebRtcVoice
 {
     // Encapsulization of a Session to the Janus server
-    public class JanusAudioBridge : IDisposable
+    public class JanusAudioBridge : JanusPlugin
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly string LogHeader = "[JANUS AUDIO BRIDGE]";
 
-        private IConfigSource _Config;
-
-        private JanusSession _JanusSession;
-
-        public string HandleId { get; private set; }
-        public string HandleUri { get ; private set ; }
-
-        public bool IsConnected => !String.IsNullOrEmpty(HandleId);
-
         // Wrapper around the session connection to Janus-gateway
-        public JanusAudioBridge(JanusSession pSession)
+        public JanusAudioBridge(JanusSession pSession) : base(pSession, "janus.plugin.audiobridge")
         {
             m_log.DebugFormat("{0} JanusAudioBridge constructor", LogHeader);
-            _JanusSession = pSession;
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             if (IsConnected)
             {
@@ -57,31 +47,34 @@ namespace WebRtcVoice
             }
         }
 
-        public async Task<bool> Activate(IConfigSource pConfig)
+        public async Task<JanusRoom> CreateRoom(string pRoomId)
         {
-            _Config = pConfig;
-            
-            bool ret = false;
+            JanusRoom ret = null;
             try
             {
-                JanusPluginHandle janusPluginHandle = new JanusPluginHandle(_JanusSession);
-                if (await janusPluginHandle.AttachPlugin("janus.plugin.audiobridge"))
-                {
-                    HandleId = janusPluginHandle.HandleId;
-                    HandleUri = janusPluginHandle.HandleUri;
-                    m_log.DebugFormat("{0} Activate. Created audiobridge plugin handle. Uri={1}", LogHeader, HandleUri);
-                    ret = true;
-                }
-                else
-                {
-                    m_log.ErrorFormat("{0} Activate. Failed to create plugin handle", LogHeader);
-                }
+                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeCreateReq(pRoomId));
+                // TODO: create JanusRoom object
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat("{0} Activate. Exception {1}", LogHeader, e);
+                m_log.ErrorFormat("{0} JoinRoom. Exception {1}", LogHeader, e);
             }
 
+            return ret;
+        }
+
+        public async Task<bool> DestroyRoom(JanusRoom janusRoom)
+        {
+            bool ret = false;
+            try
+            {
+                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeDestroyReq(janusRoom.RoomId));
+                ret = true;
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} DestroyRoom. Exception {1}", LogHeader, e);
+            }
             return ret;
         }
 

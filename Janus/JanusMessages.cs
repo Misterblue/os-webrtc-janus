@@ -50,6 +50,11 @@ namespace WebRtcVoice
         }
         public OSDMap RawBody => m_message;
 
+        public string TransactionId { 
+            get { return m_message.ContainsKey("transaction") ? m_message["transaction"] : null; }
+            set { m_message["transaction"] = value; }
+        }
+
         public string ToJson()
         {
             return m_message.ToString();
@@ -101,6 +106,14 @@ namespace WebRtcVoice
             if (m_message is not null && m_message.ContainsKey("janus"))
             {
                 ret = m_message["janus"];
+            }
+            return ret;
+        } }
+        public string Sender { get { 
+            string ret = String.Empty;
+            if (m_message is not null && m_message.ContainsKey("sender"))
+            {
+                ret = m_message["sender"];
             }
             return ret;
         } }
@@ -205,9 +218,9 @@ namespace WebRtcVoice
     public class PluginMsgReq : JanusMessageReq
     {
         private OSDMap m_body = new OSDMap();
-        public PluginMsgReq() : base("message")
+        public PluginMsgReq(OSDMap pBody) : base("message")
         {
-            m_message["body"] = m_body;
+            m_message["body"] = pBody;
         }
         public void AddString(string pKey, string pValue)
         {
@@ -224,6 +237,35 @@ namespace WebRtcVoice
         public void AddOSD(string pKey, OSD pValue)
         {
             m_body[pKey] = pValue;
+        }
+    }
+    // ==============================================================
+    public class AudioBridgeCreateReq : PluginMsgReq
+    {
+        public AudioBridgeCreateReq(string pRoomName, bool pSpacial = false) : base(new OSDMap() {
+                                                { "request", "create" },
+                                                { "is_private", false },
+                                                { "permanent", false },
+                                                { "description", "OpenSim audio room" },
+                                                { "sampling_rate", 48000 },
+                                                { "spatial_audio", pSpacial },
+                                                { "denoise", false },
+                                                { "record", false }
+                                            })  
+        {
+            if (pRoomName is not null)
+                AddString("room", pRoomName);
+        }
+    }
+    // ==============================================================
+    public class AudioBridgeDestroyReq : PluginMsgReq
+    {
+        public AudioBridgeDestroyReq(string pRoomId) : base(new OSDMap() {
+                                                { "request", "destroy" },
+                                                { "room", pRoomId },
+                                                { "permanent", true }
+                                            })  
+        {
         }
     }
     // ==============================================================

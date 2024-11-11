@@ -12,6 +12,7 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 
 using OpenSim.Framework;
 using OpenSim.Services.Interfaces;
@@ -22,31 +23,33 @@ using OpenMetaverse;
 
 using Nini.Config;
 using log4net;
-using System.Threading.Tasks;
 
 namespace WebRtcVoice
 {
     // Encapsulization of a Session to the Janus server
-    public class JanusPluginHandle : IDisposable
+    public class JanusPlugin : IDisposable
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private static readonly string LogHeader = "[JANUS PLUGIN HANDLE]";
+        private static readonly string LogHeader = "[JANUS PLUGIN]";
 
+        private IConfigSource _Config;
         private JanusSession _JanusSession;
 
+        public string PluginName { get; private set; }
         public string HandleId { get; private set; }
         public string HandleUri { get ; private set ; }
 
         public bool IsConnected => !String.IsNullOrEmpty(HandleId);
 
         // Wrapper around the session connection to Janus-gateway
-        public JanusPluginHandle(JanusSession pSession)
+        public JanusPlugin(JanusSession pSession, string pPluginName)
         {
-            m_log.DebugFormat("{0} JanusPluginHandle constructor", LogHeader);
+            m_log.DebugFormat("{0} JanusPlugin constructor", LogHeader);
             _JanusSession = pSession;
+            PluginName = pPluginName;
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             if (IsConnected)
             {
@@ -55,38 +58,43 @@ namespace WebRtcVoice
             }
         }
 
-        // Send a request to the Janus server within the session.
-        public Task<JanusMessageResp> PostToJanus(JanusMessageReq pReq)
+        public Task<JanusMessageResp> SendPluginMsg(OSDMap pParams)
         {
-            return _JanusSession.PostToJanus(pReq, HandleUri);
+            return _JanusSession.PostToSession(new PluginMsgReq(pParams));
+        }
+        public Task<JanusMessageResp> SendPluginMsg(JanusMessageReq pJMsg)
+        {
+            return _JanusSession.PostToSession(new PluginMsgReq(pJMsg.RawBody));
         }
 
         /// <summary>
         /// Make the create a handle to a plugin within the session.
         /// </summary>
         /// <returns>TRUE if handle was created successfully</returns>
-        public async Task<bool> AttachPlugin(string pPluginName)
+        public async Task<bool> Activate(IConfigSource pConfig)
         {
+            _Config = pConfig;
+
             bool ret = false;
             try
             {
-                var resp = await _JanusSession.PostToJanus(new AttachPluginReq(pPluginName));
+                var resp = await _JanusSession.PostToSession(new AttachPluginReq(PluginName));
                 if (resp is not null && resp.isSuccess)
                 {
                     var handleResp = new AttachPluginResp(resp);
                     HandleId = handleResp.pluginId;
                     HandleUri = _JanusSession.SessionUri + "/" + HandleId;
-                    m_log.DebugFormat("{0} CreatePluginHandle. Created. ID={1}, URL={2}", LogHeader, HandleId, HandleUri);
+                    m_log.DebugFormat("{0} Activate. Created. ID={1}, URL={2}", LogHeader, HandleId, HandleUri);
                     ret = true;
                 }
                 else
                 {
-                    m_log.ErrorFormat("{0} CreatePluginHandle: failed", LogHeader);
+                    m_log.ErrorFormat("{0} Activate: failed", LogHeader);
                 }
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat("{0} CreatePluginHandle: exception {1}", LogHeader, e);
+                m_log.ErrorFormat("{0} Activate: exception {1}", LogHeader, e);
             }
 
             return ret;

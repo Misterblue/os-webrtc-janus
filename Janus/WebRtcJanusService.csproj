@@ -106,6 +106,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="JanusPlugin.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="JanusAudioBridge.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -118,13 +121,7 @@
     <Compile Include="JanusMessages.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="JanusComm.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="JanusRoom.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="JanusPluginHandle.cs">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
