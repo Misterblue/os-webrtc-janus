@@ -123,6 +123,7 @@ namespace WebRtcVoice
         public async Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             OSDMap ret = null;
+            string errorMsg = null;
             if (_AudioBridge is not null)
             {
                 // TODO: check for logout=true
@@ -130,9 +131,14 @@ namespace WebRtcVoice
 
                 // Get the parameters that select the room
                 // To get here, voice_server_type has already been checked to be 'webrtc' and channel_type='local'
-                int parcel_local_id = pRequest.ContainsKey("parcel_id") ? pRequest["parcel_id"].AsInteger() : -999;
+                int parcel_local_id = pRequest.ContainsKey("parcel_id") ? pRequest["parcel_id"].AsInteger() : JanusAudioBridge.REGION_ROOM_ID;
+                string channel_id = pRequest.ContainsKey("channel_id") ? pRequest["channel_id"].AsString() : String.Empty;
+                string channel_credentials = pRequest.ContainsKey("credentials") ? pRequest["credentials"].AsString() : String.Empty;
                 string channel_type = pRequest["channel_type"].AsString();
+                bool isSpacial = channel_type == "local";
                 string voice_server_type = pRequest["voice_server_type"].AsString();
+
+                _log.DebugFormat("{0} ProvisionVoiceAccountRequest: parcel_id={1} channel_id={2} channel_type={3} voice_server_type={4}", LogHeader, parcel_local_id, channel_id, channel_type, voice_server_type); 
 
                 if (pRequest.ContainsKey("jsep") && pRequest["jsep"] is OSDMap jsep)
                 {
@@ -142,49 +148,74 @@ namespace WebRtcVoice
                     if (jsepType == "offer")
                     {
                         _log.DebugFormat("{0} ProvisionVoiceAccountRequest: jsep type={1} sdp={2}", LogHeader, jsepType, jsepSdp);
-                        // JanusRoom room = await _RoomManager.GetRoom(pUserID, parcel_local_id);
-                        // var resp = await room.Join(jsepSdp);    
-
+                        JanusRoom aRoom = await _AudioBridge.SelectRoom(channel_type, isSpacial, parcel_local_id, channel_id);
+                        if (aRoom is null)
+                        {
+                            errorMsg = "room selection failed";
+                            _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: room selection failed", LogHeader);
+                        }
+                        else {
+                            var resp = await aRoom.JoinRoom(jsepSdp);    
+                            if (resp)
+                            {
+                                ret = new OSDMap
+                                {
+                                    { "jsep", new OSDMap
+                                        {
+                                            { "type", "answer" },
+                                            { "sdp", BuildAnswerSdp(aRoom) }
+                                        }
+                                    },
+                                    { "viewer_session", aRoom.RoomId }
+                                };
+                            }
+                            else
+                            {
+                                errorMsg = "JoinRoom failed";
+                                _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: JoinRoom failed", LogHeader);
+                            }
+                        }
                     }
                     else
                     {
+                        errorMsg = "jsep type not offer";
                         _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: jsep type={1} not offer", LogHeader, jsepType);
                     }
                 }
                 else
                 {
+                    errorMsg = "no jsep";
                     _log.DebugFormat("{0} ProvisionVoiceAccountRequest: no jsep", LogHeader);
                 }
             }
             else
             {
+                errorMsg = "no JanusAudioBridge";
                 _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: no JanusAudioBridge", LogHeader);
             }
+
+            if (!String.IsNullOrEmpty(errorMsg) && ret is null)
+            {
+                // The provision failed so build an error messgage to return
+                ret = new OSDMap
+                {
+                    { "response", "failed" },
+                    { "error", errorMsg }
+                };
+            }
+
             return ret;
+        }
+
+        private string BuildAnswerSdp(JanusRoom aRoom)
+        {
+            return "answer SDP";
         }
 
         // IWebRtcVoiceService.VoiceAccountBalanceRequest
         public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             throw new System.NotImplementedException();
-        }
-
-        /// <summary>
-        /// The requestor is asking for a room with the given parcel ID. Either create the room
-        /// or return one of the rooms that matches the parcel ID.
-        /// </summary>
-        /// <param name="pUserID"></param>
-        /// <param name="pParcelLocalID"></param>
-        /// <returns>JanusRoom (for the room) or null if no such room is possible</returns>
-        private async Task<JanusRoom> AllocateRoom(UUID pUserID, int pParcelLocalID)
-        {
-            JanusRoom ret = null;
-            if (_AudioBridge is not null)
-            {
-                // The audio bridge will create a room for the client and return the room ID
-                ret = await _AudioBridge.CreateRoom("someRoomName");
-            }
-            return ret;
         }
     }
  }

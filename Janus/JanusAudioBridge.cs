@@ -23,6 +23,8 @@ using OpenMetaverse;
 using Nini.Config;
 using log4net;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace WebRtcVoice
 {
@@ -47,19 +49,26 @@ namespace WebRtcVoice
             }
         }
 
-        public async Task<JanusRoom> CreateRoom(string pRoomId)
+        public async Task<JanusRoom> CreateRoom(int pRoomId, bool pSpacial, string pRoomDesc)
         {
             JanusRoom ret = null;
             try
             {
-                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeCreateReq(pRoomId));
-                // TODO: create JanusRoom object
+                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeCreateRoomReq(pRoomId, pSpacial, pRoomDesc));
+                AudioBridgeResp abResp = new AudioBridgeResp(resp);
+                if (abResp.ReturnCode == "created")
+                {
+                    ret = new JanusRoom(this, pRoomId);
+                }
+                else
+                {
+                    m_log.ErrorFormat("{0} CreateRoom. Room creation failed: {1}", LogHeader, abResp.ToString());
+                }
             }
             catch (Exception e)
             {
                 m_log.ErrorFormat("{0} JoinRoom. Exception {1}", LogHeader, e);
             }
-
             return ret;
         }
 
@@ -68,7 +77,7 @@ namespace WebRtcVoice
             bool ret = false;
             try
             {
-                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeDestroyReq(janusRoom.RoomId));
+                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeDestroyRoomReq(janusRoom.RoomId));
                 ret = true;
             }
             catch (Exception e)
@@ -78,5 +87,99 @@ namespace WebRtcVoice
             return ret;
         }
 
+        public async Task<bool> JoinRoom(JanusRoom janusRoom, UUID pAgentID, string pAgentName)
+        {
+            bool ret = false;
+            try
+            {
+                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeJoinRoomReq(janusRoom.RoomId, pAgentName));
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} JoinRoom. Exception {1}", LogHeader, e);
+            }
+            return ret;
+        }
+
+        public async Task<bool> LeaveRoom(JanusRoom janusRoom, UUID pAgentID)
+        {
+            bool ret = false;
+            try
+            {
+                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeLeaveRoomReq(janusRoom.RoomId));
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} LeaveRoom. Exception {1}", LogHeader, e);
+            }
+            return ret;
+        }
+
+        // Constant used to denote that this is a spacial audio room for the region (as opposed to parcels)
+        public const int REGION_ROOM_ID = -999;
+        private Dictionary<string, JanusRoom> _rooms = new Dictionary<string, JanusRoom>();
+        private int _regionRoomID = 10;
+        // Return a room for the given channel type and parcel ID. If the room already exists, return it.
+        public async Task<JanusRoom> SelectRoom(string pChannelType, bool pSpacial, int pParcelLocalID, string pChannelID)
+        {
+            // A string that contains the room differentiator. Should be unique for each type of room
+            string roomDiffereniator = $"{pChannelType}-{pParcelLocalID}-{pChannelID}";
+            m_log.DebugFormat("{0} SelectRoom: diff={1}", LogHeader, roomDiffereniator);
+
+            // Check to see if the room has already been created
+            lock (_rooms)
+            {
+                if (_rooms.ContainsKey(roomDiffereniator))
+                {
+                    return _rooms[roomDiffereniator];
+                }
+            }
+
+            // The room doesn't exist. Create it.
+            JanusRoom ret = await CreateRoom(_regionRoomID++, pSpacial, roomDiffereniator);
+
+            JanusRoom existingRoom = null;
+            if (ret is not null)
+            {
+                lock (_rooms)
+                {
+                    if (_rooms.ContainsKey(roomDiffereniator))
+                    {
+                        // If the room was created while we were waiting, 
+                        existingRoom = _rooms[roomDiffereniator];
+                    }
+                    else
+                    {
+                        // Our room is the first one created. Save it.
+                        _rooms[roomDiffereniator] = ret;
+                    }
+                }
+            }
+            if (existingRoom is not null)
+            {
+                // The room we created was already created by someone else. Delete ours and use the existing one
+                await DestroyRoom(ret);
+                ret = existingRoom;
+            }
+            return ret;
+        }
+
+        // Return the room with the given room ID or 'null' if no such room
+        public JanusRoom GetRoom(int pRoomId)
+        {
+            JanusRoom ret = null;
+            lock (_rooms)
+            {
+                foreach (var room in _rooms)
+                {
+                    if (room.Value.RoomId == pRoomId)
+                    {
+                        ret = room.Value;
+                        break;
+                    }
+                }
+            }
+            return ret;
+        }   
     }
 }

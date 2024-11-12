@@ -24,7 +24,6 @@ using OpenSim.Framework.Servers.HttpServer;
 using OpenSim.Region.Framework.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using Caps = OpenSim.Framework.Capabilities.Caps;
-using OpenSim.Services.Interfaces;
 
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
@@ -48,15 +47,13 @@ namespace WebRtcVoice
     /// that has been registered for the reqion.
     /// </summary>
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "WebRtcVoiceModule")]
-    public class WebRTCVoiceModule : ISharedRegionModule, IVoiceModule
+    public class WebRtcVoiceModule : ISharedRegionModule
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private static readonly string logHeader = "[WebRTC Voice]";
+        private static readonly string logHeader = "[WEBRTC VOICE]";
 
         // Control info
         private static bool m_Enabled = false;
-        string m_openSimWellKnownHTTPAddress;
-        uint m_ServicePort;
 
         private readonly Dictionary<string, string> m_UUIDName = new Dictionary<string, string>();
         private Dictionary<string, string> m_ParcelAddress = new Dictionary<string, string>();
@@ -66,19 +63,13 @@ namespace WebRtcVoice
         public void Initialise(IConfigSource config)
         {
             m_Config = config.Configs["WebRtcVoice"];
+            if (m_Config is null) return;
 
-            if (m_Config is null)
-                return;
-
-            if (!m_Config.GetBoolean("Enabled", false))
-                return;
+            m_Enabled = m_Config.GetBoolean("Enabled", false);
+            if (!m_Enabled) return;
 
             try
             {
-                // TODO:
-
-                m_Enabled = true;
-
                 m_log.Info($"{logHeader}: plugin enabled");
             }
             catch (Exception e)
@@ -114,11 +105,6 @@ namespace WebRtcVoice
         {
             if (m_Enabled)
             {
-                m_log.Info($"{logHeader}: registering IVoiceModule with the scene");
-
-                // register the voice interface for this module, so the script engine can call us
-                scene.RegisterModuleInterface<IVoiceModule>(this);
-
                 // Register for the region feature reporting so we can add 'webrtc'
                 var sfm = scene.RequestModuleInterface<ISimulatorFeaturesModule>();
                 sfm.OnSimulatorFeaturesRequest += OnSimulatorFeatureRequestHandler;
@@ -132,7 +118,7 @@ namespace WebRtcVoice
 
         public string Name
         {
-            get { return "WebRTCVoiceModule"; }
+            get { return "WebRtcVoiceModule"; }
         }
 
         public Type ReplaceableInterface
@@ -162,7 +148,7 @@ namespace WebRtcVoice
         }
 
         // Called when the simulator features are being constructed.
-        // Add the flag that says we support WebRTC voice.
+        // Add the flag that says we support WebRtc voice.
         private void OnSimulatorFeatureRequestHandler(UUID agentID, ref OSDMap features)
         {
             m_log.DebugFormat("{0}: setting VoiceServerType=webrtc for agent {1}", logHeader, agentID);
@@ -257,7 +243,7 @@ namespace WebRtcVoice
                 return;
             }
 
-            // Make sure the request is for WebRTC voice
+            // Make sure the request is for WebRtc voice
             if (map.TryGetValue("voice_server_type", out OSD vstosd))
             {
                 if (vstosd is OSDString vst && !((string)vst).Equals("webrtc", StringComparison.OrdinalIgnoreCase))
@@ -457,7 +443,7 @@ namespace WebRtcVoice
         }
 
         // Not sure what this Uri is for. Is this FreeSwitch specific?
-        // TODO: is this useful for WebRTC?
+        // TODO: is this useful for WebRtc?
         private string ChannelUri(Scene scene, LandData land)
         {
             string channelUri = null;

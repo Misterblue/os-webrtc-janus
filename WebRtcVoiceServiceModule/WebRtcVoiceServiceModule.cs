@@ -14,7 +14,6 @@ using System;
 using System.Reflection;
 
 using OpenSim.Server.Base;
-using OpenSim.Services.Interfaces;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Interfaces;
 

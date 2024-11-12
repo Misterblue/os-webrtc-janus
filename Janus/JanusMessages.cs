@@ -55,7 +55,7 @@ namespace WebRtcVoice
             set { m_message["transaction"] = value; }
         }
 
-        public string ToJson()
+        public virtual string ToJson()
         {
             return m_message.ToString();
         }
@@ -95,13 +95,13 @@ namespace WebRtcVoice
         }
 
         // Check if a successful response code is in the response
-        public bool isSuccess { get { return CheckReturnCode("success"); } }
-        public bool isEvent { get { return CheckReturnCode("event"); } }
-        public bool CheckReturnCode(string pCode)
+        public virtual bool isSuccess { get { return CheckReturnCode("success"); } }
+        public virtual bool isEvent { get { return CheckReturnCode("event"); } }
+        public virtual bool CheckReturnCode(string pCode)
         {
             return ReturnCode == pCode;
         }
-        public string ReturnCode { get { 
+        public virtual string ReturnCode { get { 
             string ret = String.Empty;
             if (m_message is not null && m_message.ContainsKey("janus"))
             {
@@ -109,7 +109,7 @@ namespace WebRtcVoice
             }
             return ret;
         } }
-        public string Sender { get { 
+        public virtual string Sender { get { 
             string ret = String.Empty;
             if (m_message is not null && m_message.ContainsKey("sender"))
             {
@@ -215,6 +215,9 @@ namespace WebRtcVoice
         }
     }
     // ==============================================================
+    // Plugin messages are defined here as wrappers around OSDMap.
+    // The ToJson() method is overridden to put the OSDMap into the
+    //    message body.
     public class PluginMsgReq : JanusMessageReq
     {
         private OSDMap m_body = new OSDMap();
@@ -238,32 +241,77 @@ namespace WebRtcVoice
         {
             m_body[pKey] = pValue;
         }
+
+        public override string ToJson()
+        {
+            m_message["body"] = m_body;
+            return base.ToJson();
+        }
     }
     // ==============================================================
-    public class AudioBridgeCreateReq : PluginMsgReq
+    public class AudioBridgeCreateRoomReq : PluginMsgReq
     {
-        public AudioBridgeCreateReq(string pRoomName, bool pSpacial = false) : base(new OSDMap() {
+        public AudioBridgeCreateRoomReq(int pRoomId) : this(pRoomId, false, null)
+        {
+        }
+        public AudioBridgeCreateRoomReq(int pRoomId, bool pSpacial, string pDesc) : base(new OSDMap() {
+                                                { "room", pRoomId },
                                                 { "request", "create" },
                                                 { "is_private", false },
                                                 { "permanent", false },
-                                                { "description", "OpenSim audio room" },
                                                 { "sampling_rate", 48000 },
                                                 { "spatial_audio", pSpacial },
                                                 { "denoise", false },
                                                 { "record", false }
                                             })  
         {
-            if (pRoomName is not null)
-                AddString("room", pRoomName);
+            if (!String.IsNullOrEmpty(pDesc))
+                AddString("description", pDesc);
         }
     }
-    // ==============================================================
-    public class AudioBridgeDestroyReq : PluginMsgReq
+    public class AudioBridgeResp: JanusMessageResp
     {
-        public AudioBridgeDestroyReq(string pRoomId) : base(new OSDMap() {
+        public AudioBridgeResp(JanusMessageResp pResp) : base(pResp.RawBody)
+        { }
+        public override string ReturnCode { get { 
+            string ret = String.Empty;
+            if (m_message is not null && m_message.ContainsKey("audiobridge"))
+            {
+                ret = m_message["audiobridge"];
+            }
+            return ret;
+        } }
+        public string RoomId { get { return m_message.ContainsKey("room") ? m_message["room"] : String.Empty; }}
+    }
+    // ==============================================================
+    public class AudioBridgeDestroyRoomReq : PluginMsgReq
+    {
+        public AudioBridgeDestroyRoomReq(int pRoomId) : base(new OSDMap() {
                                                 { "request", "destroy" },
                                                 { "room", pRoomId },
                                                 { "permanent", true }
+                                            })  
+        {
+        }
+    }
+    // ==============================================================
+    public class AudioBridgeJoinRoomReq : PluginMsgReq
+    {
+        // TODO:
+        public AudioBridgeJoinRoomReq(int pRoomId, string pAgentName) : base(new OSDMap() {
+                                                { "request", "join" },
+                                                { "room", pRoomId },
+                                                { "display", pAgentName }
+                                            })  
+        {
+        }
+    }
+    // ==============================================================
+    public class AudioBridgeLeaveRoomReq : PluginMsgReq
+    {
+        // TODO:
+        public AudioBridgeLeaveRoomReq(int pRoomId) : base(new OSDMap() {
+                                                { "request", "leave" },
                                             })  
         {
         }
@@ -275,15 +323,8 @@ namespace WebRtcVoice
         {
         }
 
-        public string sender { get
-        {
-            string ret = String.Empty;
-            if (m_message.ContainsKey("sender"))
-            {
-                ret = m_message["sender"];
-            }
-            return ret;
-        }}
+        public string sender { get { return m_message.ContainsKey("sender") ? m_message["sender"] : String.Empty; }}
+
         public string plugindataPlugin { get
         {
             string ret = String.Empty;

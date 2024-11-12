@@ -32,58 +32,27 @@ namespace WebRtcVoice
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly string LogHeader = "[JANUS ROOM]";
 
-        public string RoomId { get; private set; }
-        public string RoomUri { get; private set; }
-        private bool IsConnected => !String.IsNullOrEmpty(RoomId);
+        public int RoomId { get; private set; }
 
         private JanusPlugin _AudioBridge;
 
         // Wrapper around the session connection to Janus-gateway
-        public JanusRoom(JanusPlugin pAudioBridge)
+        public JanusRoom(JanusPlugin pAudioBridge, int pRoomId)
         {
             m_log.DebugFormat("{0} JanusRoom constructor", LogHeader);
             _AudioBridge = pAudioBridge;
+            RoomId = pRoomId;
         }
 
         public void Dispose()
         {
-            if (IsConnected)
-            {
-                // Close the room
-            }
+            // Close the room
         }
 
-        /// <summary>
-        /// Create a room in this audio bridge
-        /// </summary>
-        /// <returns>TRUE if room was created successfully</returns>
-        public async Task<bool> CreateRoom(string pPluginName)
+        public Task<bool> JoinRoom(string pSdp)
         {
-            bool ret = false;
-            try
-            {
-                /*
-                var resp = await _AudioBridge.PostToSession(new AttachPluginReq(pPluginName));
-                if (resp is not null && resp.isSuccess)
-                {
-                    var handleResp = new AttachPluginResp(resp);
-                    HandleId = handleResp.pluginId;
-                    HandleUri = _JanusSession.SessionUri + "/" + HandleId;
-                    m_log.DebugFormat("{0} CreateRoom. Created. ID={1}, URL={2}", LogHeader, HandleId, HandleUri);
-                    ret = true;
-                }
-                else
-                {
-                    m_log.ErrorFormat("{0} CreateRoom: failed", LogHeader);
-                }
-                */
-            }
-            catch (Exception e)
-            {
-                m_log.ErrorFormat("{0} CreateRoom: exception {1}", LogHeader, e);
-            }
-
-            return ret;
+            // TODO:
+            return Task.FromResult(true);
         }
     }
 }
