@@ -36,10 +36,10 @@ namespace WebRtcVoice
         private JanusSession _JanusSession;
 
         public string PluginName { get; private set; }
-        public string HandleId { get; private set; }
-        public string HandleUri { get ; private set ; }
+        public string PluginId { get; private set; }
+        public string PluginUri { get ; private set ; }
 
-        public bool IsConnected => !String.IsNullOrEmpty(HandleId);
+        public bool IsConnected => !String.IsNullOrEmpty(PluginId);
 
         // Wrapper around the session connection to Janus-gateway
         public JanusPlugin(JanusSession pSession, string pPluginName)
@@ -60,11 +60,11 @@ namespace WebRtcVoice
 
         public Task<JanusMessageResp> SendPluginMsg(OSDMap pParams)
         {
-            return _JanusSession.PostToSession(new PluginMsgReq(pParams));
+            return _JanusSession.PostToJanus(new PluginMsgReq(pParams), PluginUri);
         }
-        public Task<JanusMessageResp> SendPluginMsg(JanusMessageReq pJMsg)
+        public Task<JanusMessageResp> SendPluginMsg(PluginMsgReq pJMsg)
         {
-            return _JanusSession.PostToSession(new PluginMsgReq(pJMsg.RawBody));
+            return _JanusSession.PostToJanus(pJMsg, PluginUri);
         }
 
         /// <summary>
@@ -82,9 +82,9 @@ namespace WebRtcVoice
                 if (resp is not null && resp.isSuccess)
                 {
                     var handleResp = new AttachPluginResp(resp);
-                    HandleId = handleResp.pluginId;
-                    HandleUri = _JanusSession.SessionUri + "/" + HandleId;
-                    m_log.DebugFormat("{0} Activate. Created. ID={1}, URL={2}", LogHeader, HandleId, HandleUri);
+                    PluginId = handleResp.pluginId;
+                    PluginUri = _JanusSession.SessionUri + "/" + PluginId;
+                    m_log.DebugFormat("{0} Activate. Created. ID={1}, URL={2}", LogHeader, PluginId, PluginUri);
                     ret = true;
                 }
                 else

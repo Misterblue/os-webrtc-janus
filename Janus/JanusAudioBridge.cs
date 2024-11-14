@@ -56,18 +56,33 @@ namespace WebRtcVoice
             {
                 JanusMessageResp resp = await SendPluginMsg(new AudioBridgeCreateRoomReq(pRoomId, pSpacial, pRoomDesc));
                 AudioBridgeResp abResp = new AudioBridgeResp(resp);
-                if (abResp.ReturnCode == "created")
+
+                m_log.DebugFormat("{0} CreateRoom. ReturnCode: {1}", LogHeader, abResp.AudioBridgeReturnCode);
+                switch (abResp.AudioBridgeReturnCode)
                 {
-                    ret = new JanusRoom(this, pRoomId);
-                }
-                else
-                {
-                    m_log.ErrorFormat("{0} CreateRoom. Room creation failed: {1}", LogHeader, abResp.ToString());
-                }
+                    case "created":
+                        ret = new JanusRoom(this, pRoomId);
+                        break;
+                    case "event":
+                        if (abResp.AudioBridgeErrorCode == 486)
+                        {
+                            m_log.ErrorFormat("{0} CreateRoom. Room {1} already exists {2}", LogHeader, pRoomId, abResp.ToString());
+                            // if room already exists, just use it
+                            ret = new JanusRoom(this, pRoomId);
+                        }
+                        else
+                        {
+                            m_log.ErrorFormat("{0} CreateRoom. XX Room creation failed: {1}", LogHeader, abResp.ToString());
+                        }
+                        break;
+                    default:
+                        m_log.ErrorFormat("{0} CreateRoom. YY Room creation failed: {1}", LogHeader, abResp.ToString());
+                        break;
+                }   
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat("{0} JoinRoom. Exception {1}", LogHeader, e);
+                m_log.ErrorFormat("{0} CreateRoom. Exception {1}", LogHeader, e);
             }
             return ret;
         }

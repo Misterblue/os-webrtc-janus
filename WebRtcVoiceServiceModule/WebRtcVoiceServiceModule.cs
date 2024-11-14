@@ -22,6 +22,9 @@ using Mono.Addins;
 using log4net;
 using Nini.Config;
 
+[assembly: Addin("WebRtcVoiceServiceModule", "1.0")]
+[assembly: AddinDependency("OpenSim.Region.Framework", OpenSim.VersionInfo.VersionNumber)]
+
 namespace WebRtcVoice
 {
     /// <summary>

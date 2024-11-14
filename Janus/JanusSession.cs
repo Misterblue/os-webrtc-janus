@@ -135,7 +135,7 @@ namespace WebRtcVoice
             return await PostToJanus(pReq, _JanusServerURI);
         }
 
-        private async Task<JanusMessageResp> PostToJanus(JanusMessageReq pReq, string pURI)
+        public async Task<JanusMessageResp> PostToJanus(JanusMessageReq pReq, string pURI)
         {
             if (!String.IsNullOrEmpty(_JanusAPIToken))
             {

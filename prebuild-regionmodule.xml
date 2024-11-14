@@ -1,6 +1,6 @@
     <Project
-            name="WebRtcVoiceModule"
-            path="addon-modules/os-webrtc-janus/WebRtcVoiceModule"
+            name="WebRtcVoiceRegionModule"
+            path="addon-modules/os-webrtc-janus/WebRtcVoiceRegionModule"
             type="Library">
 
       <Configuration name="Debug">

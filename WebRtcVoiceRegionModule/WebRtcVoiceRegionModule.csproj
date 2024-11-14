@@ -6,7 +6,7 @@
     <OutputType>Library</OutputType>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <ImplicitUsings>disable</ImplicitUsings>
-    <AssemblyName>WebRtcVoiceModule</AssemblyName>
+    <AssemblyName>WebRtcVoiceRegionModule</AssemblyName>
     <Deterministic>true</Deterministic>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <GenerateDependencyFile>false</GenerateDependencyFile>
@@ -106,7 +106,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="WebRtcVoiceModule.cs">
+    <Compile Include="WebRtcVoiceRegionModule.cs">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>

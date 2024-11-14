@@ -52,7 +52,7 @@ namespace WebRtcVoice
         public Task<bool> JoinRoom(string pSdp)
         {
             // TODO:
-            return Task.FromResult(true);
+            return Task.FromResult(false);
         }
     }
 }
