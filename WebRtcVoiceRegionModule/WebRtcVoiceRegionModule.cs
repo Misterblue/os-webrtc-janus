@@ -247,11 +247,20 @@ namespace WebRtcVoice
                 return;
             }
 
+            IWebRtcVoiceService voiceService = scene.RequestModuleInterface<IWebRtcVoiceService>();
+            if (voiceService is null)
+            {
+                m_log.ErrorFormat("{0}[ProvisionVoice]: avatar \"{1}\": no voice service", logHeader, agentID);
+                response.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
+
             // Make sure the request is for WebRtc voice
             if (map.TryGetValue("voice_server_type", out OSD vstosd))
             {
                 if (vstosd is OSDString vst && !((string)vst).Equals("webrtc", StringComparison.OrdinalIgnoreCase))
                 {
+                    m_log.WarnFormat("{0}[ProvisionVoice]: voice_server_type is not 'webrtc'. Request: {1}", logHeader, map.ToString());
                     response.RawBuffer = Util.UTF8.GetBytes("<llsd><undef /></llsd>");
                     return;
                 }
@@ -264,19 +273,13 @@ namespace WebRtcVoice
                 {
                     m_log.DebugFormat("[{0}][ProvisionVoice]: avatar \"{1}\": logout", logHeader, agentID);
                     // The logout request is handled by the voice service (to tear down the connection)
+                    OSDMap logoutResp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene).Result;
                 }
             }
 
-            IWebRtcVoiceService voiceService = scene.RequestModuleInterface<IWebRtcVoiceService>();
-            if (voiceService is null)
-            {
-                m_log.ErrorFormat("{0}[ProvisionVoice]: avatar \"{1}\": no voice service", logHeader, agentID);
-                response.StatusCode = (int)HttpStatusCode.NotFound;
-                return;
-            }
-
-            m_log.DebugFormat("{0}[ProvisionVoice]: message: {1}", logHeader, map.ToString());
             OSDMap resp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene).Result;
+
+            m_log.DebugFormat("{0}[ProvisionVoice]: response: {1}", logHeader, resp.ToString());
 
             // TODO: check for erros and package the response
             string xmlResp = OSDParser.SerializeLLSDXmlString(resp);

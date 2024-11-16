@@ -41,6 +41,9 @@ namespace WebRtcVoice
         private JanusSession _JanusSession;
         private JanusAudioBridge _AudioBridge;
 
+        // When connected to Janus, this is the room that is being used
+        private JanusRoom _JanusRoom;
+
         public WebRtcJanusService(IConfigSource pConfig) : base(pConfig)
         {
             _log.DebugFormat("{0} WebRtcJanusService constructor", LogHeader);
@@ -128,6 +131,21 @@ namespace WebRtcVoice
             {
                 // TODO: check for logout=true
                 // need to keep count of users in a room to know when to close a room
+                bool isLogout = pRequest.ContainsKey("logout") && pRequest["logout"].AsBoolean();
+                if (isLogout)
+                {
+                    // The client is logging out. Close the room
+                    string viewerSession = pRequest.ContainsKey("viewer_session") ? pRequest["viewer_session"].AsString() : String.Empty;   
+                    if (_JanusRoom is not null && !String.IsNullOrEmpty(viewerSession))
+                    {
+                        await _JanusRoom.LeaveRoom(viewerSession);
+                        _JanusRoom = null;
+                        return new OSDMap
+                        {
+                            { "response", "closed" }
+                        };
+                    }
+                }
 
                 // Get the parameters that select the room
                 // To get here, voice_server_type has already been checked to be 'webrtc' and channel_type='local'
@@ -148,25 +166,20 @@ namespace WebRtcVoice
                     if (jsepType == "offer")
                     {
                         _log.DebugFormat("{0} ProvisionVoiceAccountRequest: jsep type={1} sdp={2}", LogHeader, jsepType, jsepSdp);
-                        JanusRoom aRoom = await _AudioBridge.SelectRoom(channel_type, isSpacial, parcel_local_id, channel_id);
-                        if (aRoom is null)
+                        _JanusRoom = await _AudioBridge.SelectRoom(channel_type, isSpacial, parcel_local_id, channel_id);
+                        if (_JanusRoom is null)
                         {
                             errorMsg = "room selection failed";
                             _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: room selection failed", LogHeader);
                         }
                         else {
-                            var resp = await aRoom.JoinRoom(jsepSdp);    
-                            if (resp)
+                            JanusRoomAttendee attendee = await _JanusRoom.JoinRoom(jsepSdp, pUserID.ToString());    
+                            if (attendee is not null)
                             {
                                 ret = new OSDMap
                                 {
-                                    { "jsep", new OSDMap
-                                        {
-                                            { "type", "answer" },
-                                            { "sdp", BuildAnswerSdp(aRoom) }
-                                        }
-                                    },
-                                    { "viewer_session", aRoom.RoomId }
+                                    { "jsep", attendee.Answer },
+                                    { "viewer_session", attendee.AttendeeSession }
                                 };
                             }
                             else
@@ -185,7 +198,7 @@ namespace WebRtcVoice
                 else
                 {
                     errorMsg = "no jsep";
-                    _log.DebugFormat("{0} ProvisionVoiceAccountRequest: no jsep", LogHeader);
+                    _log.DebugFormat("{0} ProvisionVoiceAccountRequest: no jsep. req={1}", LogHeader, pRequest.ToString());
                 }
             }
             else
@@ -207,15 +220,49 @@ namespace WebRtcVoice
             return ret;
         }
 
-        private string BuildAnswerSdp(JanusRoom aRoom)
+        private string BuildAnswerSdp(JanusRoom aRoom, bool pResp)
         {
             return "answer SDP";
         }
 
         // IWebRtcVoiceService.VoiceAccountBalanceRequest
-        public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public async Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
-            throw new System.NotImplementedException();
+            OSDMap ret = null;
+            if (_JanusSession is not null)
+            {
+                // The request should be an array of candidates
+                if (pRequest.ContainsKey("candidate") && pRequest["candidate"] is OSDMap completed)
+                {
+                    if (completed.ContainsKey("completed") && completed["completed"].AsBoolean())
+                    {
+                        // The client has finished sending candidates
+                        var candiateResp = await _JanusSession.PostToSession(new TrickleReq());
+                        _log.DebugFormat("{0} VoiceSignalingRequest: candidate completed", LogHeader);
+                    }
+                }
+                else
+                {
+                    if (pRequest.ContainsKey("candidates") && pRequest["candidates"] is OSDArray candidates)
+                    {
+                        OSDArray candidatesArray = new OSDArray();
+                        foreach (OSDMap candidate in candidates)
+                        {
+                            candidatesArray.Add(new OSDMap() {
+                                { "candidate", candidate["candidate"].AsString() },
+                                { "sdpMid", candidate["sdpMid"].AsString() },
+                                { "sdpMLineIndex", candidate["sdpMLineIndex"].AsLong() }
+                            });
+                        }
+                        var candidatesResp = await _JanusSession.PostToSession(new TrickleReq(candidatesArray));
+                    }
+                    else
+                    {
+                        _log.ErrorFormat("{0} VoiceSignalingRequest: no candidates", LogHeader);
+                    }
+                }
+            }
+            return ret;
         }
     }
  }

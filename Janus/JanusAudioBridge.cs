@@ -49,6 +49,16 @@ namespace WebRtcVoice
             }
         }
 
+        /// <summary>
+        /// Create a room with the given criteria. This talks to Janus to create the room.
+        /// If the room with this RoomId already exists, just return it.
+        /// Janus could create and return the RoomId but this presumes that the Janus server
+        /// is only being used for our voice service.
+        /// </summary>
+        /// <param name="pRoomId">integer room ID to create</param>
+        /// <param name="pSpacial">boolean on whether room will be spacial or non-spacial</param>
+        /// <param name="pRoomDesc">added as "description" to the created room</param>
+        /// <returns></returns>
         public async Task<JanusRoom> CreateRoom(int pRoomId, bool pSpacial, string pRoomDesc)
         {
             JanusRoom ret = null;
@@ -66,7 +76,7 @@ namespace WebRtcVoice
                     case "event":
                         if (abResp.AudioBridgeErrorCode == 486)
                         {
-                            m_log.ErrorFormat("{0} CreateRoom. Room {1} already exists {2}", LogHeader, pRoomId, abResp.ToString());
+                            m_log.WarnFormat("{0} CreateRoom. Room {1} already exists. Reusing! {2}", LogHeader, pRoomId, abResp.ToString());
                             // if room already exists, just use it
                             ret = new JanusRoom(this, pRoomId);
                         }
@@ -98,34 +108,6 @@ namespace WebRtcVoice
             catch (Exception e)
             {
                 m_log.ErrorFormat("{0} DestroyRoom. Exception {1}", LogHeader, e);
-            }
-            return ret;
-        }
-
-        public async Task<bool> JoinRoom(JanusRoom janusRoom, UUID pAgentID, string pAgentName)
-        {
-            bool ret = false;
-            try
-            {
-                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeJoinRoomReq(janusRoom.RoomId, pAgentName));
-            }
-            catch (Exception e)
-            {
-                m_log.ErrorFormat("{0} JoinRoom. Exception {1}", LogHeader, e);
-            }
-            return ret;
-        }
-
-        public async Task<bool> LeaveRoom(JanusRoom janusRoom, UUID pAgentID)
-        {
-            bool ret = false;
-            try
-            {
-                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeLeaveRoomReq(janusRoom.RoomId));
-            }
-            catch (Exception e)
-            {
-                m_log.ErrorFormat("{0} LeaveRoom. Exception {1}", LogHeader, e);
             }
             return ret;
         }

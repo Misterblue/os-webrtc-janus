@@ -198,6 +198,20 @@ namespace WebRtcVoice
             return ret;
         }
 
+        bool TryGetOutstandingRequest(string pTransactionId, out OutstandingRequest pOutstandingRequest)
+        {
+            bool ret = false;
+            lock (_OutstandingRequests)
+            {
+                if (_OutstandingRequests.TryGetValue(pTransactionId, out pOutstandingRequest))
+                {
+                    _OutstandingRequests.Remove(pTransactionId);
+                    ret = true;
+                }
+            }
+            return ret;
+        }
+
         public Task<JanusMessageResp> PostToJanusAdmin(JanusMessageReq pReq)
         {
             return PostToJanus(pReq, _JanusAdminURI);
@@ -242,6 +256,21 @@ namespace WebRtcVoice
         }
 
         // ====================================================================
+        public delegate void JanusEventHandler(JanusMessageResp pResp);
+
+        // Not all the events are used. CS0067 is to suppress the warning that the event is not used.
+        #pragma warning disable CS0067
+        public event JanusEventHandler OnKeepAlive;
+        public event JanusEventHandler OnServerInfo;
+        public event JanusEventHandler OnTrickle;
+        public event JanusEventHandler OnHangup;
+        public event JanusEventHandler OnDetached;
+        public event JanusEventHandler OnError;
+        public event JanusEventHandler OnEvent;
+        public event JanusEventHandler OnJoined;
+        public event JanusEventHandler OnLeaving;
+        #pragma warning restore CS0067
+        // ====================================================================
         /// <summary>
         /// In the REST API, events are returned by a long poll. This
         /// starts the poll and calls the registed event handler when
@@ -282,6 +311,7 @@ namespace WebRtcVoice
                                         // got a trickle ICE candidate from Janus
                                         // this is for reverse communication from Janus to the client and we don't do that
                                         m_log.DebugFormat("{0} EventLongPoll: trickle {1}", LogHeader, resp.ToString());
+                                        OnTrickle?.Invoke(resp);
                                         break;
                                     case "webrtcup":
                                         //  ICE and DTLS succeeded, and so Janus correctly established a PeerConnection with the user/application;
@@ -292,15 +322,12 @@ namespace WebRtcVoice
                                     case "hangup":
                                         // The PeerConnection was closed, either by the user/application or by Janus itself;
                                         m_log.DebugFormat("{0} EventLongPoll: hangup {1}", LogHeader, resp.ToString());
-                                        // TODO: if (TryGetPluginHandle(resp, out pluginHandle))
-                                        // TODO: pluginHandle.webrtcState(false);
-                                        // TODO: pluginHandle.hangup();
+                                        OnHangup?.Invoke(resp);
                                         break;
                                     case "detached":
                                         // a plugin asked the core to detach one of our handles
                                         m_log.DebugFormat("{0} EventLongPoll: event {1}", LogHeader, resp.ToString());
-                                        // TODO: if (TryGetPluginHandle(resp, out pluginHandle))
-                                        // TODO: pluginHandle.detach();
+                                        OnDetached?.Invoke(resp);
                                         break;
                                     case "media":
                                         // Janus is receiving (receiving: true/false) audio/video (type: "audio/video") on this PeerConnection;
@@ -316,27 +343,40 @@ namespace WebRtcVoice
                                         break;
                                     case "error":
                                         m_log.DebugFormat("{0} EventLongPoll: error {1}", LogHeader, resp.ToString());
-                                        // TODO: SendResponseToOutStandingRequest(resp);
-                                        // or
-                                        // TODO: if (TryGetOutStandingRequest(resp, out outstandingRequetransaction
-                                        // TODO: outstandingRequest.TaskCompletionSource.SetResult(resp);
+                                        if (TryGetOutstandingRequest(resp.TransactionId, out OutstandingRequest outstandingRequest))
+                                        {
+                                            outstandingRequest.TaskCompletionSource.SetResult(resp);
+                                        }
+                                        else
+                                        {
+                                            OnError?.Invoke(resp);
+                                            m_log.ErrorFormat("{0} EventLongPoll: error with no transaction. {1}", LogHeader, resp.ToString());
+                                        }
                                         break;
                                     case "event":
                                         m_log.DebugFormat("{0} EventLongPoll: event {1}", LogHeader, resp.ToString());
-                                        // TODO: if (TryGetPluginHandle(resp, out pluginHandle))
-                                        // TODO: pluginHandle.event(resp.data, resp.jsep);
+                                        if (TryGetOutstandingRequest(resp.TransactionId, out OutstandingRequest outstandingRequest2))
+                                        {
+                                            // Someone is waiting for this event
+                                            outstandingRequest2.TaskCompletionSource.SetResult(resp);
+                                        }
+                                        else
+                                        {
+                                            m_log.ErrorFormat("{0} EventLongPoll: event no outstanding request {1}", LogHeader, resp.ToString());
+                                        }
                                         break;
                                     case "timeout":
                                         // Events for the audio bridge
                                         m_log.DebugFormat("{0} EventLongPoll: timeout {1}", LogHeader, resp.ToString());
                                         break;
-
                                     case "joined":
                                         // Events for the audio bridge
+                                        OnJoined?.Invoke(resp);
                                         m_log.DebugFormat("{0} EventLongPoll: joined {1}", LogHeader, resp.ToString());
                                         break;
                                     case "leaving":
                                         // Events for the audio bridge
+                                        OnLeaving?.Invoke(resp);
                                         m_log.DebugFormat("{0} EventLongPoll: leaving {1}", LogHeader, resp.ToString());
                                         break;
                                     default:

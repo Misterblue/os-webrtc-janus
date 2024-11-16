@@ -124,5 +124,8 @@
     <Compile Include="JanusRoom.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="JanusRoomAttendee.cs">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

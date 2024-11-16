@@ -23,6 +23,8 @@ using OpenMetaverse;
 using Nini.Config;
 using log4net;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
+using System.Collections.Generic;
 
 namespace WebRtcVoice
 {
@@ -35,6 +37,8 @@ namespace WebRtcVoice
         public int RoomId { get; private set; }
 
         private JanusPlugin _AudioBridge;
+
+        private Dictionary<string, JanusRoomAttendee> _Attendees = new Dictionary<string, JanusRoomAttendee>();
 
         // Wrapper around the session connection to Janus-gateway
         public JanusRoom(JanusPlugin pAudioBridge, int pRoomId)
@@ -49,10 +53,94 @@ namespace WebRtcVoice
             // Close the room
         }
 
-        public Task<bool> JoinRoom(string pSdp)
+        public async Task<JanusRoomAttendee> JoinRoom(string pSdp, string pAgentName)
         {
-            // TODO:
-            return Task.FromResult(false);
+            m_log.DebugFormat("{0} JoinRoom. Entered", LogHeader);
+            JanusRoomAttendee ret = null;
+            try
+            {
+                string cleanSdp = CleanupSdp(pSdp);
+
+                var joinReq = new AudioBridgeJoinRoomReq(RoomId, pAgentName);
+                m_log.DebugFormat("{0} JoinRoom. New joinReq for room {1}", LogHeader, RoomId);
+                joinReq.SetJsep("offer", cleanSdp);
+                JanusMessageResp resp = await _AudioBridge.SendPluginMsg(joinReq);
+                AudioBridgeJoinRoomResp joinResp = new AudioBridgeJoinRoomResp(resp);
+
+                if (joinResp is not null && joinResp.AudioBridgeReturnCode == "joined")
+                {
+                    m_log.DebugFormat("{0} JoinRoom. Joined room {1}", LogHeader, RoomId);
+                    var attendee = new JanusRoomAttendee(this)
+                    {
+                        AgentId = pAgentName,   // simulator's avatar GUID
+                        JanusAttendeeId = joinResp.ParticipantId,   // Janus id for the participant
+                        OfferOrig = pSdp,
+                        Offer = cleanSdp,
+                        Answer = joinResp.Jsep // remember the answer
+                    };
+                    _Attendees.Add(attendee.AttendeeSession, attendee);
+
+                    // TODO:
+                    ret = attendee;
+                }
+                else
+                {
+                    m_log.ErrorFormat("{0} JoinRoom. Failed to join room {1}. Resp={2}", LogHeader, RoomId, joinResp.ToString());
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} JoinRoom. Exception {1}", LogHeader, e);
+            }
+            return ret;
         }
+
+        // The SDP coming from the client has some things that Janus doesn't like.
+        // In particular, the data section must be removed so the audio bridge
+        //     gets an audio only offer.
+        private string CleanupSdp(string pSdp)
+        {
+            string ret = pSdp;
+            try
+            {
+                string dataSection = "m=application [^\\r\\n]* webrtc-datachannel.*";
+                ret = Regex.Replace(pSdp, dataSection, "", RegexOptions.Singleline);
+                m_log.DebugFormat("{0} CleanupSdp. cleaned={1}", LogHeader, ret);
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} CleanupSdp. Exception {1}", LogHeader, e);
+            }
+            return ret;
+        }
+
+        public async Task<bool> LeaveRoom(string pAttendeeSession)
+        {
+            bool ret = false;
+            try
+            {
+                JanusRoomAttendee attendee = null;
+                lock (_Attendees)
+                {
+                    if (_Attendees.TryGetValue(pAttendeeSession, out attendee))
+                    {
+                        _Attendees.Remove(pAttendeeSession);
+                        ret = true;
+                    }
+                }
+
+                if (attendee is not null)
+                {
+                    JanusMessageResp resp = await _AudioBridge.SendPluginMsg(new AudioBridgeLeaveRoomReq(RoomId, attendee.JanusAttendeeId));
+                    ret = true;
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} LeaveRoom. Exception {1}", LogHeader, e);
+            }
+            return ret;
+        }
+
     }
 }

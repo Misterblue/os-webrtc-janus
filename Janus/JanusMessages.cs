@@ -40,6 +40,7 @@ namespace WebRtcVoice
         protected static readonly string LogHeader = "[JANUS MESSAGE]";
 
         protected OSDMap m_message = new OSDMap();
+
         public JanusMessage()
         {
         }
@@ -53,6 +54,22 @@ namespace WebRtcVoice
         public string TransactionId { 
             get { return m_message.ContainsKey("transaction") ? m_message["transaction"] : null; }
             set { m_message["transaction"] = value; }
+        }
+        public string Sender { 
+            get { return m_message.ContainsKey("sender") ? m_message["sender"] : null; }
+            set { m_message["sender"] = value; }
+        }
+        public OSDMap Jsep { 
+            get { return m_message.ContainsKey("jsep") ? (m_message["jsep"] as OSDMap) : null; }
+            set { m_message["jsep"] = value; }
+        }
+        public void SetJsep(string pOffer, string pSdp)
+        {
+            m_message["jsep"] = new OSDMap()
+            {
+                { "type", pOffer },
+                { "sdp", pSdp }
+            };
         }
 
         public virtual string ToJson()
@@ -110,14 +127,6 @@ namespace WebRtcVoice
             if (m_message is not null && m_message.ContainsKey("janus"))
             {
                 ret = m_message["janus"];
-            }
-            return ret;
-        } }
-        public virtual string Sender { get { 
-            string ret = String.Empty;
-            if (m_message is not null && m_message.ContainsKey("sender"))
-            {
-                ret = m_message["sender"];
             }
             return ret;
         } }
@@ -182,6 +191,26 @@ namespace WebRtcVoice
         public SessionDestroyReq() : base("destroy")
         {
             // Doesn't include the session ID because it is the URI
+        }
+    }   
+    // ==============================================================
+    public class TrickleReq : JanusMessageReq
+    {
+        // An empty trickle request is used to signal the end of the trickle
+        public TrickleReq() : base("trickle")
+        {
+            m_message["candidate"] = new OSDMap()
+            {
+                { "completed", true },
+            };
+
+        }
+        public TrickleReq(OSD pCandidates) : base("trickle")
+        {
+            if (pCandidates is OSDArray)
+                m_message["candidates"] = pCandidates;
+            else
+                m_message["candidate"] = pCandidates;
         }
     }   
     // ==============================================================
@@ -252,6 +281,69 @@ namespace WebRtcVoice
             return base.ToJson();
         }
     }
+    // A plugin response is formatted like:
+    //    {
+    //    "janus": "success",
+    //    "session_id": 5645225333294848,
+    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea",
+    //    "sender": 6969906757968657,
+    //    "plugindata": {
+    //        "plugin": "janus.plugin.audiobridge",
+    //        "data": {
+    //            "audiobridge": "created",
+    //            "room": 10,
+    //            "permanent": false
+    //        }
+    //    }
+    public class PluginMsgResp : JanusMessageResp
+    {
+        public OSDMap m_pluginData;
+        public OSDMap m_data;
+        public PluginMsgResp(JanusMessageResp pResp) : base(pResp.RawBody)
+        {
+            if (m_message is not null && m_message.ContainsKey("plugindata"))
+            {
+                m_pluginData = m_message["plugindata"] as OSDMap;
+                if (m_pluginData.ContainsKey("data"))
+                {
+                    m_data = m_pluginData["data"] as OSDMap;
+                    m_log.DebugFormat("{0} AudioBridgeResp. Found both plugindata and data: data={1}", LogHeader, m_data.ToString());
+                }
+            }
+        }
+
+        protected int PluginRespDataInt(string pKey)
+        {
+            int ret = 0;
+            if (m_data is not null && m_data.ContainsKey(pKey))
+            {
+                ret = (int)m_data[pKey].AsLong();
+            }
+            return ret;
+        }
+        protected string PluginRespDataString(string pKey)
+        {
+            string ret = String.Empty;
+            if (m_data is not null && m_data.ContainsKey(pKey))
+            {
+                ret = m_data[pKey].AsString();
+            }
+            return ret;
+        }
+    }
+    // ==============================================================
+    public class AudioBridgeResp: PluginMsgResp
+    {
+        public AudioBridgeResp(JanusMessageResp pResp) : base(pResp)
+        {
+        }
+        // Return the return code if it is in the response or empty string if not
+        public string AudioBridgeReturnCode { get { return PluginRespDataString("audiobridge"); } }
+        // Return the error code if it is in the response or zero if not
+        public int AudioBridgeErrorCode { get { return PluginRespDataInt("error_code"); } }
+        // Return the room ID if it is in the response or zero if not
+        public int RoomId { get { return PluginRespDataInt("room"); } }
+    }
     // ==============================================================
     public class AudioBridgeCreateRoomReq : PluginMsgReq
     {
@@ -273,62 +365,6 @@ namespace WebRtcVoice
                 AddString("description", pDesc);
         }
     }
-    // A plugin response is formatted like:
-    //    {
-    //    "janus": "success",
-    //    "session_id": 5645225333294848,
-    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea",
-    //    "sender": 6969906757968657,
-    //    "plugindata": {
-    //        "plugin": "janus.plugin.audiobridge",
-    //        "data": {
-    //            "audiobridge": "created",
-    //            "room": 10,
-    //            "permanent": false
-    //        }
-    //    }
-    public class AudioBridgeResp: JanusMessageResp
-    {
-        OSDMap m_pluginData;
-        OSDMap m_data;
-        public AudioBridgeResp(JanusMessageResp pResp) : base(pResp.RawBody)
-        {
-            if (m_message is not null && m_message.ContainsKey("plugindata"))
-            {
-                m_pluginData = m_message["plugindata"] as OSDMap;
-                if (m_pluginData.ContainsKey("data"))
-                {
-                    m_data = m_pluginData["data"] as OSDMap;
-                    m_log.DebugFormat("{0} AudioBridgeResp. Found both plugindata and data: data={1}", LogHeader, m_data.ToString());
-                }
-            }
-        }
-        // Return the return code if it is in the response or empty string if not
-        public string AudioBridgeReturnCode { get
-        { 
-            string ret = String.Empty;
-            if (m_data is not null && m_data.ContainsKey("audiobridge"))
-            {
-                ret = m_data["audiobridge"];
-            }
-            return ret;
-        } }
-        // Return the error code if it is in the response or zero if not
-        public int AudioBridgeErrorCode { get
-        { 
-            int ret = 0;
-            if (m_data is not null && m_data.ContainsKey("error_code"))
-            {
-                ret = (int)m_data["error_code"].AsLong();
-            }
-            return ret;
-        } }
-        // Return the room ID if it is in the response or zero if not
-        public int RoomId { get
-        {
-            return m_data.ContainsKey("room") ? (int)m_data["room"].AsLong() : 0;
-        } }
-    }
     // ==============================================================
     public class AudioBridgeDestroyRoomReq : PluginMsgReq
     {
@@ -343,25 +379,52 @@ namespace WebRtcVoice
     // ==============================================================
     public class AudioBridgeJoinRoomReq : PluginMsgReq
     {
-        // TODO:
         public AudioBridgeJoinRoomReq(int pRoomId, string pAgentName) : base(new OSDMap() {
                                                 { "request", "join" },
                                                 { "room", pRoomId },
                                                 { "display", pAgentName }
-                                            })  
+                                            })
+        {
+        }
+    }
+    // ==============================================================
+    public class AudioBridgeJoinRoomResp : AudioBridgeResp
+    {
+        public AudioBridgeJoinRoomResp(JanusMessageResp pResp) : base(pResp)
+        {
+        }
+        public int ParticipantId { get { return PluginRespDataInt("id"); } }
+    }
+    // ==============================================================
+    public class AudioBridgeConfigRoomReq : PluginMsgReq
+    {
+        // TODO:
+        public AudioBridgeConfigRoomReq(int pRoomId, string pSdp) : base(new OSDMap() {
+                                                { "request", "configure" },
+                                            })
+        {
+        }
+    }
+    // ==============================================================
+    public class AudioBridgeConfigRoomResp : AudioBridgeResp
+    {
+        // TODO:
+        public AudioBridgeConfigRoomResp(JanusMessageResp pResp) : base(pResp)
         {
         }
     }
     // ==============================================================
     public class AudioBridgeLeaveRoomReq : PluginMsgReq
     {
-        // TODO:
-        public AudioBridgeLeaveRoomReq(int pRoomId) : base(new OSDMap() {
+        public AudioBridgeLeaveRoomReq(int pRoomId, int pAttendeeId) : base(new OSDMap() {
                                                 { "request", "leave" },
+                                                { "room", pRoomId },
+                                                { "id", pAttendeeId }
                                             })  
         {
         }
     }
+    // ==============================================================
     // ==============================================================
     public class EventResp : JanusMessageResp
     {
@@ -370,21 +433,5 @@ namespace WebRtcVoice
         }
 
         public string sender { get { return m_message.ContainsKey("sender") ? m_message["sender"] : String.Empty; }}
-
-        public string plugindataPlugin { get
-        {
-            string ret = String.Empty;
-            if (m_message.ContainsKey("plugindata"))
-            {
-                var plugindata = m_message["plugindata"];
-                if (plugindata is OSDMap)
-                {
-                    var plugin = (plugindata as OSDMap)["plugin"];
-                    if (plugin is OSDMap)
-                        ret = (plugin as OSDMap)["plugin"];
-                }
-            }
-            return ret;
-        }}
     }
 }

@@ -92,6 +92,14 @@ namespace WebRtcVoice
 
         public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
+            // If the user is logging out, send the request to both services
+            if (pRequest.ContainsKey("logout") && pRequest["logout"].AsBoolean())
+            {
+                _ = m_spacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene).Result;
+                return m_nonSpacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene);
+            }
+
+            // If the request is for a local channel, send it to the spacial service
             if (pRequest.TryGetValue("channel_type", out OSD channelType))
             {
                 if (channelType.AsString() == "local")
