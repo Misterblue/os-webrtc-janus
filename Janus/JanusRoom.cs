@@ -59,11 +59,15 @@ namespace WebRtcVoice
             JanusRoomAttendee ret = null;
             try
             {
-                string cleanSdp = CleanupSdp(pSdp);
-
+                // Discovered that AudioBridge doesn't care if the data portion is present
+                //    and, if removed, the viewer complains that the "m=" sections are
+                //    out of order. Not "cleaning" (removing the data section) seems to work.
+                // string cleanSdp = CleanupSdp(pSdp);
                 var joinReq = new AudioBridgeJoinRoomReq(RoomId, pAgentName);
-                m_log.DebugFormat("{0} JoinRoom. New joinReq for room {1}", LogHeader, RoomId);
-                joinReq.SetJsep("offer", cleanSdp);
+                // m_log.DebugFormat("{0} JoinRoom. New joinReq for room {1}", LogHeader, RoomId);
+                // joinReq.SetJsep("offer", cleanSdp);
+                joinReq.SetJsep("offer", pSdp);
+
                 JanusMessageResp resp = await _AudioBridge.SendPluginMsg(joinReq);
                 AudioBridgeJoinRoomResp joinResp = new AudioBridgeJoinRoomResp(resp);
 
@@ -75,7 +79,8 @@ namespace WebRtcVoice
                         AgentId = pAgentName,   // simulator's avatar GUID
                         JanusAttendeeId = joinResp.ParticipantId,   // Janus id for the participant
                         OfferOrig = pSdp,
-                        Offer = cleanSdp,
+                        // Offer = cleanSdp,
+                        Offer = pSdp,
                         Answer = joinResp.Jsep // remember the answer
                     };
                     _Attendees.Add(attendee.AttendeeSession, attendee);
