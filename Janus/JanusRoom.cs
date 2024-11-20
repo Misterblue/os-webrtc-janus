@@ -51,20 +51,20 @@ namespace WebRtcVoice
             // Close the room
         }
 
-        public async Task<JanusViewerSession> JoinRoom(string pSdp, string pAgentName)
+        public async Task<bool> JoinRoom(JanusViewerSession pVSession)
         {
             m_log.DebugFormat("{0} JoinRoom. Entered", LogHeader);
-            JanusRoomAttendee ret = null;
+            bool ret = false;
             try
             {
                 // Discovered that AudioBridge doesn't care if the data portion is present
                 //    and, if removed, the viewer complains that the "m=" sections are
                 //    out of order. Not "cleaning" (removing the data section) seems to work.
                 // string cleanSdp = CleanupSdp(pSdp);
-                var joinReq = new AudioBridgeJoinRoomReq(RoomId, pAgentName);
+                var joinReq = new AudioBridgeJoinRoomReq(RoomId, pVSession.AgentId);
                 // m_log.DebugFormat("{0} JoinRoom. New joinReq for room {1}", LogHeader, RoomId);
                 // joinReq.SetJsep("offer", cleanSdp);
-                joinReq.SetJsep("offer", pSdp);
+                joinReq.SetJsep("offer", pVSession.Offer);
 
                 JanusMessageResp resp = await _AudioBridge.SendPluginMsg(joinReq);
                 AudioBridgeJoinRoomResp joinResp = new AudioBridgeJoinRoomResp(resp);
@@ -72,19 +72,9 @@ namespace WebRtcVoice
                 if (joinResp is not null && joinResp.AudioBridgeReturnCode == "joined")
                 {
                     m_log.DebugFormat("{0} JoinRoom. Joined room {1}", LogHeader, RoomId);
-                    var attendee = new JanusRoomAttendee(this)
-                    {
-                        AgentId = pAgentName,   // simulator's avatar GUID
-                        JanusAttendeeId = joinResp.ParticipantId,   // Janus id for the participant
-                        OfferOrig = pSdp,
-                        // Offer = cleanSdp,
-                        Offer = pSdp,
-                        Answer = joinResp.Jsep // remember the answer
-                    };
-                    _Attendees.Add(attendee.AttendeeSession, attendee);
-
-                    // TODO:
-                    ret = attendee;
+                    pVSession.JanusAttendeeId = joinResp.ParticipantId;
+                    pVSession.Answer = joinResp.Jsep;
+                    ret = true;
                 }
                 else
                 {
