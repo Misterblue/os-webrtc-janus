@@ -38,8 +38,6 @@ namespace WebRtcVoice
 
         private JanusPlugin _AudioBridge;
 
-        private Dictionary<string, JanusRoomAttendee> _Attendees = new Dictionary<string, JanusRoomAttendee>();
-
         // Wrapper around the session connection to Janus-gateway
         public JanusRoom(JanusPlugin pAudioBridge, int pRoomId)
         {
@@ -53,7 +51,7 @@ namespace WebRtcVoice
             // Close the room
         }
 
-        public async Task<JanusRoomAttendee> JoinRoom(string pSdp, string pAgentName)
+        public async Task<JanusViewerSession> JoinRoom(string pSdp, string pAgentName)
         {
             m_log.DebugFormat("{0} JoinRoom. Entered", LogHeader);
             JanusRoomAttendee ret = null;
@@ -119,26 +117,13 @@ namespace WebRtcVoice
             return ret;
         }
 
-        public async Task<bool> LeaveRoom(string pAttendeeSession)
+        public async Task<bool> LeaveRoom(JanusViewerSession pAttendeeSession)
         {
             bool ret = false;
             try
             {
-                JanusRoomAttendee attendee = null;
-                lock (_Attendees)
-                {
-                    if (_Attendees.TryGetValue(pAttendeeSession, out attendee))
-                    {
-                        _Attendees.Remove(pAttendeeSession);
-                        ret = true;
-                    }
-                }
-
-                if (attendee is not null)
-                {
-                    JanusMessageResp resp = await _AudioBridge.SendPluginMsg(new AudioBridgeLeaveRoomReq(RoomId, attendee.JanusAttendeeId));
-                    ret = true;
-                }
+                JanusMessageResp resp = await _AudioBridge.SendPluginMsg(
+                    new AudioBridgeLeaveRoomReq(RoomId, pAttendeeSession.JanusAttendeeId));
             }
             catch (Exception e)
             {

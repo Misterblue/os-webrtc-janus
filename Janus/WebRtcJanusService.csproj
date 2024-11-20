@@ -118,6 +118,9 @@
     <Compile Include="JanusSession.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="JanusViewerSession.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="JanusMessages.cs">
       <SubType>Code</SubType>
     </Compile>

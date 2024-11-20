@@ -24,9 +24,19 @@ using OpenSim.Framework;
 using Nini.Config;
 using log4net;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace WebRtcVoice
 {
+    /// <summary>
+    /// Interface for the WebRtcVoiceService.
+    /// An instance of this is registered as the IWebRtcVoiceService for this region.
+    /// The function here is to direct the capability requests to the appropriate voice service.
+    /// For the moment, there are separate voice services for spacial and non-spacial voice
+    /// with the idea that a region could have a pre-region spacial voice service while
+    /// the grid could have a non-spacial voice service for group chat, etc.
+    /// Fancier configurations are possible.
+    /// </summary>
     public class WebRtcVoiceService : ServiceBase, IWebRtcVoiceService
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
@@ -37,6 +47,31 @@ namespace WebRtcVoice
 
         private IWebRtcVoiceService m_spacialVoiceService;
         private IWebRtcVoiceService m_nonSpacialVoiceService;
+
+        // Keep track of the viewer sessions so we can find them when we need them
+        public static Dictionary<string, IVoiceViewerSession> ViewerSessions = new Dictionary<string, IVoiceViewerSession>();
+        public static bool TryGetViewerSession<T>(string pSessionId, out T pViewerSession) where T : IVoiceViewerSession
+        {
+            bool ret = false;
+            if (ViewerSessions.TryGetValue(pSessionId, out IVoiceViewerSession session))
+            {
+                if (session is T)
+                {
+                    pViewerSession = (T)session;
+                    ret = true;
+                }
+            }
+            pViewerSession = default(T);
+            return ret;
+        }
+        public static void AddViewerSession(IVoiceViewerSession pSession)
+        {
+            ViewerSessions[pSession.SessionID] = pSession;
+        }
+        public static void RemoveViewerSession(string pSessionId)
+        {
+            ViewerSessions.Remove(pSessionId);
+        }
 
         public WebRtcVoiceService(IConfigSource pConfig) : base(pConfig)
         {

@@ -114,5 +114,8 @@
     <Compile Include="IWebRtcVoiceService.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="IVoiceViewerSession.cs">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

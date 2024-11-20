@@ -22,6 +22,7 @@ using OpenMetaverse;
 
 using Nini.Config;
 using log4net;
+using OpenSim.Region.Framework.Scenes;
 
 namespace WebRtcVoice
 {
@@ -129,14 +130,15 @@ namespace WebRtcVoice
             string errorMsg = null;
             if (_AudioBridge is not null)
             {
+                JanusViewerSession viewerSession = SetupViewerSession(pRequest);
+
                 // TODO: check for logout=true
                 // need to keep count of users in a room to know when to close a room
                 bool isLogout = pRequest.ContainsKey("logout") && pRequest["logout"].AsBoolean();
                 if (isLogout)
                 {
                     // The client is logging out. Close the room
-                    string viewerSession = pRequest.ContainsKey("viewer_session") ? pRequest["viewer_session"].AsString() : String.Empty;   
-                    if (_JanusRoom is not null && !String.IsNullOrEmpty(viewerSession))
+                    if (_JanusRoom is not null)
                     {
                         await _JanusRoom.LeaveRoom(viewerSession);
                         _JanusRoom = null;
@@ -173,13 +175,16 @@ namespace WebRtcVoice
                             _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: room selection failed", LogHeader);
                         }
                         else {
-                            JanusRoomAttendee attendee = await _JanusRoom.JoinRoom(jsepSdp, pUserID.ToString());    
-                            if (attendee is not null)
+                            viewerSession.Room = _JanusRoom;
+                            viewerSession.Offer = jsepSdp;
+                            viewerSession.OfferOrig = jsepSdp;
+                            viewerSession.AgentId = pUserID.ToString();
+                            if (await _JanusRoom.JoinRoom(viewerSession))    
                             {
                                 ret = new OSDMap
                                 {
-                                    { "jsep", attendee.Answer },
-                                    { "viewer_session", attendee.AttendeeSession }
+                                    { "jsep", viewerSession.Answer },
+                                    { "viewer_session", viewerSession.SessionID }
                                 };
                             }
                             else
@@ -218,11 +223,6 @@ namespace WebRtcVoice
             }
 
             return ret;
-        }
-
-        private string BuildAnswerSdp(JanusRoom aRoom, bool pResp)
-        {
-            return "answer SDP";
         }
 
         // IWebRtcVoiceService.VoiceAccountBalanceRequest
@@ -264,5 +264,34 @@ namespace WebRtcVoice
             }
             return ret;
         }
+
+        /// <summary>
+        /// The session with the user is identified by the 'viewer_session' parameter in the message.
+        /// Find the session or create a new one.
+        /// </summary>
+        /// <param name="pRequest"></param>
+        /// <returns>found or created JanusViewerSession or 'null' if there was a session but it wasn't Janus</returns>
+        private JanusViewerSession SetupViewerSession(OSDMap pRequest)
+        {
+            JanusViewerSession ret = null;
+            if (pRequest.ContainsKey("viewer_session") && pRequest["viewer_session"] is OSDString vSession)
+            {
+                if (!WebRtcVoiceService.TryGetViewerSession<JanusViewerSession>(vSession, out ret))
+                {
+                    // 'viewer_session' is in the message but we don't have the tracker info for it
+                    ret = new JanusViewerSession(vSession);
+                    WebRtcVoiceService.AddViewerSession(ret);
+                    pRequest["viewer_session"] = vSession;
+                }
+            }
+            else
+            {
+                // No viewer session in the message. Create one
+                ret = new JanusViewerSession(UUID.Random().ToString());
+                pRequest["viewer_session"] = ret.SessionID;
+                WebRtcVoiceService.AddViewerSession(ret);
+            }
+            return ret;
+        }   
     }
  }

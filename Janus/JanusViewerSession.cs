@@ -10,39 +10,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Reflection;
-
-using OpenMetaverse;
 using OpenMetaverse.StructuredData;
-
-using log4net;
 
 namespace WebRtcVoice
 {
-    // Encapsulization of a Session to the Janus server
-    public class JanusRoomAttendee
+    public class JanusViewerSession : IVoiceViewerSession
     {
-        private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private static readonly string LogHeader = "[JANUS ROOM ATTENDEE]";
-
-        public JanusRoom Room;
-        public string OfferOrig;
-        public string Offer;
+        // 'viewer_session' that is passed to and from the viewer
+        public string SessionID { get; set; }
+        public JanusRoom Room { get; set; }
+        public string OfferOrig { get; set; }
+        public string Offer { get; set; }
         // Contains "type" and "sdp" fields
-        public OSDMap Answer;
+        public OSDMap Answer { get; set; }
 
         // The simulator has a GUID to identify the user
         public string AgentId { get; set; }
-        // The simulator keeps track of the user session by this unique ID
-        public string AttendeeSession = UUID.Random().ToString();
         // The Janus server keeps track of the user by this ID
         public int JanusAttendeeId;
 
-        // Keep track of an attendee in a room
-        public JanusRoomAttendee(JanusRoom pRoom)
+        public JanusViewerSession(string pSessionID)
         {
-            m_log.DebugFormat("{0} JanusRoomAttendee constructor", LogHeader);
-            Room = pRoom;
+            SessionID = pSessionID;
         }
     }
 }

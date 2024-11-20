@@ -63,6 +63,7 @@ namespace WebRtcVoice
 
         private IConfig m_Config;
 
+        // ISharedRegionModule.Initialize
         public void Initialise(IConfigSource config)
         {
             m_log.Info($"{logHeader}: RegionVoiceModule initializing");
@@ -83,10 +84,12 @@ namespace WebRtcVoice
             }
         }
 
+        // ISharedRegionModule.PostInitialize
         public void PostInitialise()
         {
         }
 
+        // ISharedRegionModule.AddRegion
         public void AddRegion(Scene scene)
         {
             if (m_Enabled)
@@ -99,12 +102,14 @@ namespace WebRtcVoice
             }
         }
 
+        // ISharedRegionModule.RemoveRegion
         public void RemoveRegion(Scene scene)
         {
             var sfm = scene.RequestModuleInterface<ISimulatorFeaturesModule>();
             sfm.OnSimulatorFeaturesRequest -= OnSimulatorFeatureRequestHandler;
         }
 
+        // ISharedRegionModule.RegionLoaded
         public void RegionLoaded(Scene scene)
         {
             if (m_Enabled)
@@ -116,39 +121,21 @@ namespace WebRtcVoice
             }
         }
 
+        // ISharedRegionModule.Close
         public void Close()
         {
         }
 
+        // ISharedRegionModule.Name
         public string Name
         {
             get { return "RegionVoiceModule"; }
         }
 
+        // ISharedRegionModule.ReplaceableInterface
         public Type ReplaceableInterface
         {
             get { return null; }
-        }
-
-        // <summary>
-        // implementation of IVoiceModule, called by osSetParcelSIPAddress script function
-        // </summary>
-        public void setLandSIPAddress(string SIPAddress,UUID GlobalID)
-        {
-            m_log.DebugFormat("{0}: setLandSIPAddress parcel id {1}: setting sip address {2}",
-                                  logHeader, GlobalID, SIPAddress);
-
-            lock (m_ParcelAddress)
-            {
-                if (m_ParcelAddress.ContainsKey(GlobalID.ToString()))
-                {
-                    m_ParcelAddress[GlobalID.ToString()] = SIPAddress;
-                }
-                else
-                {
-                    m_ParcelAddress.Add(GlobalID.ToString(), SIPAddress);
-                }
-            }
         }
 
         // Called when the simulator features are being constructed.
