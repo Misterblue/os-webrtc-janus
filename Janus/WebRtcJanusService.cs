@@ -231,13 +231,15 @@ namespace WebRtcVoice
             OSDMap ret = null;
             if (_JanusSession is not null)
             {
+                JanusViewerSession viewerSession = SetupViewerSession(pRequest);
+
                 // The request should be an array of candidates
                 if (pRequest.ContainsKey("candidate") && pRequest["candidate"] is OSDMap completed)
                 {
                     if (completed.ContainsKey("completed") && completed["completed"].AsBoolean())
                     {
                         // The client has finished sending candidates
-                        var candiateResp = await _JanusSession.PostToSession(new TrickleReq());
+                        var candiateResp = await _JanusSession.PostToSession(new TrickleReq(viewerSession));
                         _log.DebugFormat("{0} VoiceSignalingRequest: candidate completed", LogHeader);
                     }
                 }
@@ -254,7 +256,7 @@ namespace WebRtcVoice
                                 { "sdpMLineIndex", candidate["sdpMLineIndex"].AsLong() }
                             });
                         }
-                        var candidatesResp = await _JanusSession.PostToSession(new TrickleReq(candidatesArray));
+                        var candidatesResp = await _JanusSession.PostToSession(new TrickleReq(viewerSession, candidatesArray));
                     }
                     else
                     {

@@ -197,7 +197,7 @@ namespace WebRtcVoice
     public class TrickleReq : JanusMessageReq
     {
         // An empty trickle request is used to signal the end of the trickle
-        public TrickleReq() : base("trickle")
+        public TrickleReq(JanusViewerSession pVSession) : base("trickle")
         {
             m_message["candidate"] = new OSDMap()
             {
@@ -205,8 +205,9 @@ namespace WebRtcVoice
             };
 
         }
-        public TrickleReq(OSD pCandidates) : base("trickle")
+        public TrickleReq(JanusViewerSession pVSession, OSD pCandidates) : base("trickle")
         {
+            m_message["viewer_session"] = pVSession.SessionID;
             if (pCandidates is OSDArray)
                 m_message["candidates"] = pCandidates;
             else
