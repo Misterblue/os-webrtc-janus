@@ -22,7 +22,6 @@ using OpenMetaverse;
 
 using Nini.Config;
 using log4net;
-using OpenSim.Region.Framework.Scenes;
 
 namespace WebRtcVoice
 {
@@ -278,11 +277,11 @@ namespace WebRtcVoice
             JanusViewerSession ret = null;
             if (pRequest.ContainsKey("viewer_session") && pRequest["viewer_session"] is OSDString vSession)
             {
-                if (!WebRtcVoiceService.TryGetViewerSession<JanusViewerSession>(vSession, out ret))
+                if (!WebRtcVoiceServiceModule.TryGetViewerSession<JanusViewerSession>(vSession, out ret))
                 {
                     // 'viewer_session' is in the message but we don't have the tracker info for it
                     ret = new JanusViewerSession(vSession);
-                    WebRtcVoiceService.AddViewerSession(ret);
+                    WebRtcVoiceServiceModule.AddViewerSession(ret);
                     pRequest["viewer_session"] = vSession;
                 }
             }
@@ -291,7 +290,7 @@ namespace WebRtcVoice
                 // No viewer session in the message. Create one
                 ret = new JanusViewerSession(UUID.Random().ToString());
                 pRequest["viewer_session"] = ret.SessionID;
-                WebRtcVoiceService.AddViewerSession(ret);
+                WebRtcVoiceServiceModule.AddViewerSession(ret);
             }
             return ret;
         }   

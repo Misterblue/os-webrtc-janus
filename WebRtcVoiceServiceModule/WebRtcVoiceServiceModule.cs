@@ -11,11 +11,17 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 
 using OpenSim.Server.Base;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Interfaces;
+
+using OpenMetaverse.StructuredData;
+using OpenMetaverse;
+using OpenSim.Framework;
 
 using Mono.Addins;
 
@@ -28,12 +34,16 @@ using Nini.Config;
 namespace WebRtcVoice
 {
     /// <summary>
-    /// This module exists to load the WebRtcVoiceService into the region.
-    /// It initially loads the dll via [WebRtcVoice]BaseService in the configuration
-    /// then, as regions are added, registers the WebRtcVoiceService with the region.
+    /// Interface for the WebRtcVoiceService.
+    /// An instance of this is registered as the IWebRtcVoiceService for this region.
+    /// The function here is to direct the capability requests to the appropriate voice service.
+    /// For the moment, there are separate voice services for spacial and non-spacial voice
+    /// with the idea that a region could have a pre-region spacial voice service while
+    /// the grid could have a non-spacial voice service for group chat, etc.
+    /// Fancier configurations are possible.
     /// </summary>
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "WebRtcVoiceServiceModule")]
-    public class WebRtcVoiceServiceModule : ISharedRegionModule
+    public class WebRtcVoiceServiceModule : ISharedRegionModule, IWebRtcVoiceService
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static string LogHeader = "[WEBRTC VOICE SERVICE MODULE]";
@@ -41,30 +51,83 @@ namespace WebRtcVoice
         private static bool m_Enabled = false;
         private IConfigSource m_Config;
 
-        private IWebRtcVoiceService m_WebRtcVoiceService;
+        private IWebRtcVoiceService m_spacialVoiceService;
+        private IWebRtcVoiceService m_nonSpacialVoiceService;
+
+        // =====================================================================
+        public static Dictionary<string, IVoiceViewerSession> ViewerSessions = new Dictionary<string, IVoiceViewerSession>();
+        public static bool TryGetViewerSession<T>(string pSessionId, out T pViewerSession) where T : IVoiceViewerSession
+        {
+            bool ret = false;
+            if (ViewerSessions.TryGetValue(pSessionId, out IVoiceViewerSession session))
+            {
+                if (session is T)
+                {
+                    pViewerSession = (T)session;
+                    ret = true;
+                }
+            }
+            pViewerSession = default(T);
+            return ret;
+        }
+        public static void AddViewerSession(IVoiceViewerSession pSession)
+        {
+            ViewerSessions[pSession.SessionID] = pSession;
+        }
+        public static void RemoveViewerSession(string pSessionId)
+        {
+            ViewerSessions.Remove(pSessionId);
+        }
+        // =====================================================================
 
         // ISharedRegionModule.Initialize
-        public void Initialise(IConfigSource config)
+        public void Initialise(IConfigSource pConfig)
         {
-            m_Config = config;
-            IConfig moduleConfig = config.Configs["WebRtcVoice"];
+            m_log.DebugFormat("{0} WebRtcVoiceServiceModule constructor", LogHeader);
+            m_Config = pConfig;
+            IConfig moduleConfig = m_Config.Configs["WebRtcVoice"];
 
             if (moduleConfig is not null)
             {
                 m_Enabled = moduleConfig.GetBoolean("Enabled", false);
                 if (m_Enabled)
                 {
-                    string dllName = moduleConfig.GetString("BaseService", String.Empty);
-                    if (String.IsNullOrEmpty(dllName))
+                    // Get the DLLs for the two voice services
+                    string spacialDllName = moduleConfig.GetString("SpacialVoiceService", String.Empty);
+                    string nonSpacialDllName = moduleConfig.GetString("NonSpacialVoiceService", String.Empty);
+                    if (String.IsNullOrEmpty(spacialDllName) && String.IsNullOrEmpty(nonSpacialDllName))
                     {
-                        m_log.ErrorFormat("{0} No BaseService specified in configuration", LogHeader);
+                        m_log.ErrorFormat("{0} No SpacialVoiceService or NonSpacialVoiceService specified in configuration", LogHeader);
                         m_Enabled = false;
                     }
-                    else
+
+                    // Default non-spacial to spacial if not specified
+                    if (String.IsNullOrEmpty(nonSpacialDllName))
                     {
-                        m_log.DebugFormat("{0} Loading WebRtcVoiceService from {1}", LogHeader, dllName);
-                        m_WebRtcVoiceService = ServerUtils.LoadPlugin<IWebRtcVoiceService>(dllName, new object[] { config });
-                        m_log.InfoFormat("{0} WebRtcVoiceModule enabled", LogHeader);
+                        m_log.DebugFormat("{0} nonSpacialDllName not specified. Defaulting to spacialDllName", LogHeader);
+                        nonSpacialDllName = spacialDllName;
+                    }
+
+                    // Load the two voice services
+                    m_log.DebugFormat("{0} Loading SpacialVoiceService from {1}", LogHeader, spacialDllName);
+                    m_spacialVoiceService = ServerUtils.LoadPlugin<IWebRtcVoiceService>(spacialDllName, new object[] { m_Config });
+                    if (m_spacialVoiceService is null)
+                    {
+                        m_log.ErrorFormat("{0} Could not load SpacialVoiceService from {1}", LogHeader, spacialDllName);
+                        m_Enabled = false;
+                    }
+
+                    m_log.DebugFormat("{0} Loading NonSpacialVoiceService from {1}", LogHeader, nonSpacialDllName);
+                    m_nonSpacialVoiceService = ServerUtils.LoadPlugin<IWebRtcVoiceService>(nonSpacialDllName, new object[] { m_Config });
+                    if (m_nonSpacialVoiceService is null)
+                    {
+                        m_log.ErrorFormat("{0} Could not load NonSpacialVoiceService from {1}", LogHeader, nonSpacialDllName);
+                        m_Enabled = false;
+                    }
+
+                    if (m_Enabled)
+                    {
+                        m_log.InfoFormat("{0} WebRtcVoiceService enabled", LogHeader);
                     }
                 }
             }
@@ -95,10 +158,10 @@ namespace WebRtcVoice
         // ISharedRegionModule.AddRegion
         public void AddRegion(Scene scene)
         {
-            if (m_Enabled && m_WebRtcVoiceService is not null)
+            if (m_Enabled)
             {
                 m_log.DebugFormat("{0} Adding WebRtcVoiceService to region {1}", LogHeader, scene.Name);
-                scene.RegisterModuleInterface<IWebRtcVoiceService>(m_WebRtcVoiceService);
+                scene.RegisterModuleInterface<IWebRtcVoiceService>(this);
             }
 
         }
@@ -106,15 +169,68 @@ namespace WebRtcVoice
         // ISharedRegionModule.RemoveRegion
         public void RemoveRegion(Scene scene)
         {
-            if (m_Enabled && m_WebRtcVoiceService is not null)
+            if (m_Enabled)
             {
-                scene.UnregisterModuleInterface<IWebRtcVoiceService>(m_WebRtcVoiceService);
+                scene.UnregisterModuleInterface<IWebRtcVoiceService>(this);
             }
         }
 
         // ISharedRegionModule.RegionLoaded
         public void RegionLoaded(Scene scene)
         {
+        }
+
+        // =====================================================================
+        // IWebRtcVoiceService
+
+        // IWebRtcVoiceService.ProvisionVoiceAccountRequest
+        public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        {
+            // If the user is logging out, send the request to both services
+            if (pRequest.ContainsKey("logout") && pRequest["logout"].AsBoolean())
+            {
+                _ = m_spacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene).Result;
+                return m_nonSpacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene);
+            }
+
+            // If the request is for a local channel, send it to the spacial service
+            if (pRequest.TryGetValue("channel_type", out OSD channelType))
+            {
+                if (channelType.AsString() == "local")
+                {
+                    return m_spacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene);
+                }
+                else
+                {
+                    return m_nonSpacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene);
+                }
+            }
+            else
+            {
+                m_log.ErrorFormat("{0} ProvisionVoiceAccountRequest: no channel_type in request", LogHeader);
+            }
+            return null;
+        }
+
+        // IWebRtcVoiceService.VoiceSignalingRequest
+        public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        {
+            if (pRequest.TryGetValue("channel_type", out OSD channelType))
+            {
+                if (channelType.AsString() == "local")
+                {
+                    return m_spacialVoiceService.VoiceSignalingRequest(pRequest, pUserID, pScene);
+                }
+                else
+                {
+                    return m_nonSpacialVoiceService.VoiceSignalingRequest(pRequest, pUserID, pScene);
+                }
+            }
+            else
+            {
+                m_log.ErrorFormat("{0} VoiceSignalingRequest: no channel_type in request", LogHeader);
+            }
+            return null;
         }
     }
 }
