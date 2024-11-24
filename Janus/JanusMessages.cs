@@ -13,17 +13,10 @@
 using System;
 using System.Reflection;
 
-using OpenSim.Framework;
-using OpenSim.Services.Interfaces;
-using OpenSim.Services.Base;
-
 using OpenMetaverse.StructuredData;
 using OpenMetaverse;
 
-using Nini.Config;
 using log4net;
-using System.Threading.Tasks;
-using OpenMetaverse.Voice;
 
 namespace WebRtcVoice
 {

@@ -242,42 +242,52 @@ namespace WebRtcVoice
         {
             OSDMap ret = null;
             JanusViewerSession viewerSession = pSession as JanusViewerSession;
+            JanusMessageResp resp = null;
             if (viewerSession is not null)
             {
                 // The request should be an array of candidates
-                if (pRequest.ContainsKey("candidate") && pRequest["candidate"] is OSDMap completed)
+                if (pRequest.ContainsKey("candidate") && pRequest["candidate"] is OSDMap candidate)
                 {
-                    if (completed.ContainsKey("completed") && completed["completed"].AsBoolean())
+                    if (candidate.ContainsKey("completed") && candidate["completed"].AsBoolean())
                     {
                         // The client has finished sending candidates
-                        // var candiateResp = await viewerSession.Session.PostToSession(new TrickleReq(viewerSession));
-                        var candiateResp =
-                            await viewerSession.Session.PostToJanus(new TrickleReq(viewerSession), viewerSession.AudioBridge.PluginUri);
+                        resp = await viewerSession.Session.TrickleCompleted(viewerSession);
                         _log.DebugFormat("{0} VoiceSignalingRequest: candidate completed", LogHeader);
-                    }
-                }
-                else
-                {
-                    if (pRequest.ContainsKey("candidates") && pRequest["candidates"] is OSDArray candidates)
-                    {
-                        OSDArray candidatesArray = new OSDArray();
-                        foreach (OSDMap candidate in candidates)
-                        {
-                            candidatesArray.Add(new OSDMap() {
-                                { "candidate", candidate["candidate"].AsString() },
-                                { "sdpMid", candidate["sdpMid"].AsString() },
-                                { "sdpMLineIndex", candidate["sdpMLineIndex"].AsLong() }
-                            });
-                        }
-                        // var candidatesResp = await viewerSession.Session.PostToSession(new TrickleReq(viewerSession, candidatesArray));
-                        var candiateResp =
-                            await viewerSession.Session.PostToJanus(new TrickleReq(viewerSession), viewerSession.AudioBridge.PluginUri);
                     }
                     else
                     {
-                        _log.ErrorFormat("{0} VoiceSignalingRequest: no candidates", LogHeader);
                     }
                 }
+                else if (pRequest.ContainsKey("candidates") && pRequest["candidates"] is OSDArray candidates)
+                {
+                    OSDArray candidatesArray = new OSDArray();
+                    foreach (OSDMap cand in candidates)
+                    {
+                        candidatesArray.Add(new OSDMap() {
+                            { "candidate", cand["candidate"].AsString() },
+                            { "sdpMid", cand["sdpMid"].AsString() },
+                            { "sdpMLineIndex", cand["sdpMLineIndex"].AsLong() }
+                        });
+                    }
+                    resp = await viewerSession.Session.TrickleCandidates(viewerSession, candidatesArray);
+                    _log.DebugFormat("{0} VoiceSignalingRequest: {1} candidates", LogHeader, candidatesArray.Count);
+                }
+                else
+                {
+                    _log.ErrorFormat("{0} VoiceSignalingRequest: no 'candidate' or 'candidates'", LogHeader);
+                }
+            }
+            if (resp is null)
+            {
+                _log.ErrorFormat("{0} VoiceSignalingRequest: no response so returning error", LogHeader);
+                ret = new OSDMap
+                {
+                    { "response", "error" }
+                };
+            }
+            else
+            {
+                ret = resp.RawBody;
             }
             return ret;
         }

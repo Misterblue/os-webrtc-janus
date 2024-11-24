@@ -84,7 +84,7 @@ namespace WebRtcVoice
             bool ret = false;
             try
             {
-                var resp = await PostToJanus(new CreateSessionReq());
+                var resp = await SendToJanus(new CreateSessionReq());
                 if (resp is not null && resp.isSuccess)
                 {
                     var sessionResp = new CreateSessionResp(resp);
@@ -108,6 +108,36 @@ namespace WebRtcVoice
         }
 
         // ====================================================================
+        public async Task<JanusMessageResp> TrickleCandidates(JanusViewerSession pVSession, OSDArray pCandidates)
+        {
+            JanusMessageResp ret = null;
+            // if the audiobridge is active, the trickle message is sent to it
+            if (pVSession.AudioBridge is null)
+            {
+                ret = await SendToJanusNoWait(new TrickleReq(pVSession));
+            }
+            else
+            {
+                ret = await SendToJanusNoWait(new TrickleReq(pVSession), pVSession.AudioBridge.PluginUri);
+            }
+            return ret;
+        }
+        // ====================================================================
+        public async Task<JanusMessageResp> TrickleCompleted(JanusViewerSession pVSession)
+        {
+            JanusMessageResp ret = null;
+            // if the audiobridge is active, the trickle message is sent to it
+            if (pVSession.AudioBridge is null)
+            {
+                ret = await SendToJanusNoWait(new TrickleReq(pVSession));
+            }
+            else
+            {
+                ret = await SendToJanusNoWait(new TrickleReq(pVSession), pVSession.AudioBridge.PluginUri);
+            }
+            return ret;
+        }
+        // ====================================================================
         public Dictionary<string, JanusPlugin> _Plugins = new Dictionary<string, JanusPlugin>();
         public void AddPlugin(JanusPlugin pPlugin)
         {
@@ -115,9 +145,9 @@ namespace WebRtcVoice
         }
         // ====================================================================
         // Post to the session
-        public async Task<JanusMessageResp> PostToSession(JanusMessageReq pReq)
+        public async Task<JanusMessageResp> SendToSession(JanusMessageReq pReq)
         {
-            return await PostToJanus(pReq, SessionUri);
+            return await SendToJanus(pReq, SessionUri);
         }
 
         private class OutstandingRequest
@@ -128,14 +158,23 @@ namespace WebRtcVoice
         }
         private Dictionary<string, OutstandingRequest> _OutstandingRequests = new Dictionary<string, OutstandingRequest>();
 
-        // Send a request to the Janus server within the session.
+        // Send a request directly to the Janus server.
         // NOTE: this is probably NOT what you want to do. This is a direct call that is outside the session.
-        private async Task<JanusMessageResp> PostToJanus(JanusMessageReq pReq)
+        private async Task<JanusMessageResp> SendToJanus(JanusMessageReq pReq)
         {
-            return await PostToJanus(pReq, _JanusServerURI);
+            return await SendToJanus(pReq, _JanusServerURI);
         }
 
-        public async Task<JanusMessageResp> PostToJanus(JanusMessageReq pReq, string pURI)
+        /// <summary>
+        /// Send a request to the Janus server. This is the basic call that sends a request to the server.
+        /// The transaction ID is used to match the response to the request.
+        /// If the request returns an 'ack' response, the code waits for the matching event
+        /// before returning the response.
+        /// </summary>
+        /// <param name="pReq"></param>
+        /// <param name="pURI"></param>
+        /// <returns></returns>
+        public async Task<JanusMessageResp> SendToJanus(JanusMessageReq pReq, string pURI)
         {
             if (!String.IsNullOrEmpty(_JanusAPIToken))
             {
@@ -145,8 +184,8 @@ namespace WebRtcVoice
             {
                 pReq.TransactionId = Guid.NewGuid().ToString();
             }
-            // m_log.DebugFormat("{0} PostToJanus", LogHeader);
-            m_log.DebugFormat("{0} PostToJanus. URI={1}, req={2}", LogHeader, pURI, pReq.ToJson());
+            // m_log.DebugFormat("{0} SendToJanus", LogHeader);
+            m_log.DebugFormat("{0} SendToJanus. URI={1}, req={2}", LogHeader, pURI, pReq.ToJson());
 
             JanusMessageResp ret = null;
             try
@@ -172,7 +211,7 @@ namespace WebRtcVoice
                     if (ret.CheckReturnCode("ack"))
                     {
                         // Some messages are asynchronous and completed with an event
-                        m_log.DebugFormat("{0} PostToJanus: ack response {1}", LogHeader, respStr);
+                        m_log.DebugFormat("{0} SendToJanus: ack response {1}", LogHeader, respStr);
                         ret = await _OutstandingRequests[pReq.TransactionId].TaskCompletionSource.Task;
                         _OutstandingRequests.Remove(pReq.TransactionId);
 
@@ -181,21 +220,52 @@ namespace WebRtcVoice
                     {
                         // If the response is not an ack, that means a synchronous request/response so return the response
                         _OutstandingRequests.Remove(pReq.TransactionId);
-                        m_log.DebugFormat("{0} PostToJanus: response {1}", LogHeader, respStr);
+                        m_log.DebugFormat("{0} SendToJanus: response {1}", LogHeader, respStr);
                     }
                 }
                 else
                 {
-                    m_log.ErrorFormat("{0} PostToJanus: response not successful {1}", LogHeader, response);
+                    m_log.ErrorFormat("{0} SendToJanus: response not successful {1}", LogHeader, response);
                     _OutstandingRequests.Remove(pReq.TransactionId);
                 }
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat("{0} PostToJanus: exception {1}", LogHeader, e);
+                m_log.ErrorFormat("{0} SendToJanus: exception {1}", LogHeader, e);
             }
 
             return ret;
+        }
+        /// <summary>
+        /// Send a request to the Janus server but we just return the response and don't wait for any
+        /// event or anything.
+        /// There are some requests that are just fire-and-forget.
+        /// </summary>
+        /// <param name="pReq"></param>
+        /// <returns></returns>
+        private async Task<JanusMessageResp> SendToJanusNoWait(JanusMessageReq pReq, string pURI)
+        {
+            JanusMessageResp ret = new JanusMessageResp();
+
+            try {
+                HttpRequestMessage reqMsg = new HttpRequestMessage(HttpMethod.Post, pURI);
+                string reqStr = pReq.ToJson();
+                reqMsg.Content = new StringContent(reqStr, System.Text.Encoding.UTF8, MediaTypeNames.Application.Json);
+                reqMsg.Headers.Add("Accept", "application/json");
+                HttpResponseMessage response = await _HttpClient.SendAsync(reqMsg);
+                string respStr = await response.Content.ReadAsStringAsync();
+                ret = JanusMessageResp.FromJson(respStr);
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} SendToJanusNoWait: exception {1}", LogHeader, e);
+            }
+            return ret;
+
+        }
+        private async Task<JanusMessageResp> SendToJanusNoWait(JanusMessageReq pReq)
+        {
+            return await SendToJanusNoWait(pReq, SessionUri);
         }
 
         bool TryGetOutstandingRequest(string pTransactionId, out OutstandingRequest pOutstandingRequest)
@@ -212,9 +282,9 @@ namespace WebRtcVoice
             return ret;
         }
 
-        public Task<JanusMessageResp> PostToJanusAdmin(JanusMessageReq pReq)
+        public Task<JanusMessageResp> SendToJanusAdmin(JanusMessageReq pReq)
         {
-            return PostToJanus(pReq, _JanusAdminURI);
+            return SendToJanus(pReq, _JanusAdminURI);
         }
 
         public Task<JanusMessageResp> GetFromJanus()

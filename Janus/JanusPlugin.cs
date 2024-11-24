@@ -60,11 +60,11 @@ namespace WebRtcVoice
 
         public Task<JanusMessageResp> SendPluginMsg(OSDMap pParams)
         {
-            return _JanusSession.PostToJanus(new PluginMsgReq(pParams), PluginUri);
+            return _JanusSession.SendToJanus(new PluginMsgReq(pParams), PluginUri);
         }
         public Task<JanusMessageResp> SendPluginMsg(PluginMsgReq pJMsg)
         {
-            return _JanusSession.PostToJanus(pJMsg, PluginUri);
+            return _JanusSession.SendToJanus(pJMsg, PluginUri);
         }
 
         /// <summary>
@@ -78,7 +78,7 @@ namespace WebRtcVoice
             bool ret = false;
             try
             {
-                var resp = await _JanusSession.PostToSession(new AttachPluginReq(PluginName));
+                var resp = await _JanusSession.SendToSession(new AttachPluginReq(PluginName));
                 if (resp is not null && resp.isSuccess)
                 {
                     var handleResp = new AttachPluginResp(resp);
