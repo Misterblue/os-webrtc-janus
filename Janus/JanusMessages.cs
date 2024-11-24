@@ -207,7 +207,7 @@ namespace WebRtcVoice
         }
         public TrickleReq(JanusViewerSession pVSession, OSD pCandidates) : base("trickle")
         {
-            m_message["viewer_session"] = pVSession.SessionID;
+            m_message["viewer_session"] = pVSession.ViewerSessionID;
             if (pCandidates is OSDArray)
                 m_message["candidates"] = pCandidates;
             else

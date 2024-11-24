@@ -25,8 +25,16 @@ namespace WebRtcVoice
         // The user is requesting a voice connection. The message contains the offer
         //     from the user and we must return the answer.
         // If there are problems, the returned map will contain an error message.
-        public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene);
 
+        // Initial calls to the voice server to get the user connected
+        public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene);
         public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene);
+
+        // Once connection state is looked up, the viewer session is passed in
+        public Task<OSDMap> ProvisionVoiceAccountRequest(IVoiceViewerSession pVSession, OSDMap pRequest, UUID pUserID, IScene pScene);
+        public Task<OSDMap> VoiceSignalingRequest(IVoiceViewerSession pVSession, OSDMap pRequest, UUID pUserID, IScene pScene);
+
+        // Create a viewer session with all the variables needed for the underlying implementation
+        public IVoiceViewerSession CreateViewerSession(OSDMap pRequest, UUID pUserID, IScene pScene);
     }
 }

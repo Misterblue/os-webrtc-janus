@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using OMV = OpenMetaverse;
 using OpenMetaverse.StructuredData;
 
 namespace WebRtcVoice
@@ -17,7 +18,10 @@ namespace WebRtcVoice
     public class JanusViewerSession : IVoiceViewerSession
     {
         // 'viewer_session' that is passed to and from the viewer
-        public string SessionID { get; set; }
+        public IWebRtcVoiceService VoiceService { get; set; }
+        public string ViewerSessionID { get; set; }
+        public JanusSession Session { get; set; }
+        public JanusAudioBridge AudioBridge { get; set; }
         public JanusRoom Room { get; set; }
         public string OfferOrig { get; set; }
         public string Offer { get; set; }
@@ -26,12 +30,19 @@ namespace WebRtcVoice
 
         // The simulator has a GUID to identify the user
         public string AgentId { get; set; }
+
         // The Janus server keeps track of the user by this ID
         public int JanusAttendeeId;
 
-        public JanusViewerSession(string pSessionID)
+        public JanusViewerSession(IWebRtcVoiceService pVoiceService)
         {
-            SessionID = pSessionID;
+            VoiceService = pVoiceService;
+            ViewerSessionID = OMV.UUID.Random().ToString();
+        }
+        public JanusViewerSession(string pSessionID, IWebRtcVoiceService pVoiceService)
+        {
+            VoiceService = pVoiceService;
+            ViewerSessionID = pSessionID;
         }
     }
 }

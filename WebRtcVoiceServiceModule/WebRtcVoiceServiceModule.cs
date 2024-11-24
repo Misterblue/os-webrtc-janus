@@ -56,23 +56,13 @@ namespace WebRtcVoice
 
         // =====================================================================
         public static Dictionary<string, IVoiceViewerSession> ViewerSessions = new Dictionary<string, IVoiceViewerSession>();
-        public static bool TryGetViewerSession<T>(string pSessionId, out T pViewerSession) where T : IVoiceViewerSession
+        public static bool TryGetViewerSession(string pSessionId, out IVoiceViewerSession pViewerSession)
         {
-            bool ret = false;
-            if (ViewerSessions.TryGetValue(pSessionId, out IVoiceViewerSession session))
-            {
-                if (session is T)
-                {
-                    pViewerSession = (T)session;
-                    ret = true;
-                }
-            }
-            pViewerSession = default(T);
-            return ret;
+            return ViewerSessions.TryGetValue(pSessionId, out pViewerSession);
         }
         public static void AddViewerSession(IVoiceViewerSession pSession)
         {
-            ViewerSessions[pSession.SessionID] = pSession;
+            ViewerSessions[pSession.ViewerSessionID] = pSession;
         }
         public static void RemoveViewerSession(string pSessionId)
         {
@@ -81,6 +71,7 @@ namespace WebRtcVoice
         // =====================================================================
 
         // ISharedRegionModule.Initialize
+        // Get configuration and load the modules that will handle spacial and non-spacial voice.
         public void Initialise(IConfigSource pConfig)
         {
             m_log.DebugFormat("{0} WebRtcVoiceServiceModule constructor", LogHeader);
@@ -184,53 +175,90 @@ namespace WebRtcVoice
         // IWebRtcVoiceService
 
         // IWebRtcVoiceService.ProvisionVoiceAccountRequest
-        public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public async Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
-            // If the user is logging out, send the request to both services
-            if (pRequest.ContainsKey("logout") && pRequest["logout"].AsBoolean())
+            OSDMap response = null;
+            IVoiceViewerSession vSession = null;
+            if (pRequest.ContainsKey("viewer_session"))
             {
-                _ = m_spacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene).Result;
-                return m_nonSpacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene);
-            }
-
-            // If the request is for a local channel, send it to the spacial service
-            if (pRequest.TryGetValue("channel_type", out OSD channelType))
-            {
-                if (channelType.AsString() == "local")
+                // request has a viewer session. Use that to find the voice service
+                string viewerSessionId = pRequest["viewer_session"].AsString();
+                if (TryGetViewerSession(viewerSessionId, out vSession))
                 {
-                    return m_spacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene);
+                    response = await vSession.VoiceService.ProvisionVoiceAccountRequest(vSession, pRequest, pUserID, pScene);
                 }
                 else
                 {
-                    return m_nonSpacialVoiceService.ProvisionVoiceAccountRequest(pRequest, pUserID, pScene);
+                    m_log.ErrorFormat("{0} ProvisionVoiceAccountRequest: viewer session {1} not found", LogHeader, viewerSessionId);
                 }
-            }
+            }   
             else
             {
-                m_log.ErrorFormat("{0} ProvisionVoiceAccountRequest: no channel_type in request", LogHeader);
+                // the request does not have a viewer session. See if it's an initial request
+                if (pRequest.ContainsKey("channel_type"))
+                {
+                    string channelType = pRequest["channel_type"].AsString();
+                    if (channelType == "local")
+                    {
+                        vSession = m_spacialVoiceService.CreateViewerSession(pRequest, pUserID, pScene);
+                        AddViewerSession(vSession);
+                        response = await m_spacialVoiceService.ProvisionVoiceAccountRequest(vSession, pRequest, pUserID, pScene);
+                    }
+                    else
+                    {
+                        vSession = m_nonSpacialVoiceService.CreateViewerSession(pRequest, pUserID, pScene);
+                        AddViewerSession(vSession);
+                        response = await m_nonSpacialVoiceService.ProvisionVoiceAccountRequest(vSession, pRequest, pUserID, pScene);
+                    }
+                }
+                else
+                {
+                    m_log.ErrorFormat("{0} ProvisionVoiceAccountRequest: no channel_type in request", LogHeader);
+                }
             }
-            return null;
+            return response;
         }
 
         // IWebRtcVoiceService.VoiceSignalingRequest
-        public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public async Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
-            if (pRequest.TryGetValue("channel_type", out OSD channelType))
+            OSDMap response = null;
+            IVoiceViewerSession vSession = null;
+            if (pRequest.ContainsKey("viewer_session"))
             {
-                if (channelType.AsString() == "local")
+                // request has a viewer session. Use that to find the voice service
+                string viewerSessionId = pRequest["viewer_session"].AsString();
+                if (TryGetViewerSession(viewerSessionId, out vSession))
                 {
-                    return m_spacialVoiceService.VoiceSignalingRequest(pRequest, pUserID, pScene);
+                    response = await vSession.VoiceService.VoiceSignalingRequest(vSession, pRequest, pUserID, pScene);
                 }
                 else
                 {
-                    return m_nonSpacialVoiceService.VoiceSignalingRequest(pRequest, pUserID, pScene);
+                    m_log.ErrorFormat("{0} VoiceSignalingRequest: viewer session {1} not found", LogHeader, viewerSessionId);
                 }
-            }
+            }   
             else
             {
-                m_log.ErrorFormat("{0} VoiceSignalingRequest: no channel_type in request", LogHeader);
+                m_log.ErrorFormat("{0} VoiceSignalingRequest: no viewer_session in request", LogHeader);
             }
-            return null;
+            return response;
+        }
+
+        // This module should never be called with this signature
+        public Task<OSDMap> ProvisionVoiceAccountRequest(IVoiceViewerSession pVSession, OSDMap pRequest, UUID pUserID, IScene pScene)
+        {
+            throw new NotImplementedException();
+        }
+
+        // This module should never be called with this signature
+        public Task<OSDMap> VoiceSignalingRequest(IVoiceViewerSession pVSession, OSDMap pRequest, UUID pUserID, IScene pScene)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IVoiceViewerSession CreateViewerSession(OSDMap pRequest, UUID pUserID, IScene pScene)
+        {
+            throw new NotImplementedException();
         }
     }
 }

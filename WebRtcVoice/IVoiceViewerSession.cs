@@ -29,6 +29,7 @@ namespace WebRtcVoice
 {
     public interface IVoiceViewerSession
     {
-        public string SessionID { get; set; }
+        public string ViewerSessionID { get; set; }
+        public IWebRtcVoiceService VoiceService { get; set; }
     }
 }

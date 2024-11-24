@@ -253,17 +253,6 @@ namespace WebRtcVoice
                 }
             }
 
-            // See if a 'logout' request is present
-            if (map.TryGetValue("logout", out OSD logout))
-            {
-                if (logout is OSDBoolean lob && lob)
-                {
-                    m_log.DebugFormat("[{0}][ProvisionVoice]: avatar \"{1}\": logout", logHeader, agentID);
-                    // The logout request is handled by the voice service (to tear down the connection)
-                    OSDMap logoutResp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene).Result;
-                }
-            }
-
             OSDMap resp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene).Result;
 
             m_log.DebugFormat("{0}[ProvisionVoice]: response: {1}", logHeader, resp.ToString());

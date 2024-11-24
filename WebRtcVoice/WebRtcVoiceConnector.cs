@@ -34,12 +34,27 @@ namespace WebRtcVoice
             // Nothing to do
         }
 
+        public IVoiceViewerSession CreateViewerSession(OSDMap pRequest, UUID pUserID, IScene pScene)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             throw new NotImplementedException();
         }
 
+        public Task<OSDMap> ProvisionVoiceAccountRequest(IVoiceViewerSession pVSession, OSDMap pRequest, UUID pUserID, IScene pScene)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<OSDMap> VoiceSignalingRequest(IVoiceViewerSession pVSession, OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             throw new NotImplementedException();
         }

@@ -114,41 +114,58 @@ namespace WebRtcVoice
 
         // Constant used to denote that this is a spacial audio room for the region (as opposed to parcels)
         public const int REGION_ROOM_ID = -999;
-        private Dictionary<string, JanusRoom> _rooms = new Dictionary<string, JanusRoom>();
-        private int _regionRoomID = 10;
-        // Return a room for the given channel type and parcel ID. If the room already exists, return it.
+        private Dictionary<int, JanusRoom> _rooms = new Dictionary<int, JanusRoom>();
+        private struct RoomKey
+        {
+            public string ChannelType;
+            public bool Spacial;
+            public int ParcelLocalID;
+            public string ChannelID;
+        }
         public async Task<JanusRoom> SelectRoom(string pChannelType, bool pSpacial, int pParcelLocalID, string pChannelID)
         {
-            // A string that contains the room differentiator. Should be unique for each type of room
-            string roomDiffereniator = $"{pChannelType}-{pParcelLocalID}-{pChannelID}";
-            m_log.DebugFormat("{0} SelectRoom: diff={1}", LogHeader, roomDiffereniator);
+            // Hack to generate a unique room number for the given type of room.
+            // Several regions could point to the same Janus server so we need to make sure
+            //     the room is unique for the use.
+            RoomKey keyStruct = new RoomKey
+            {
+                ChannelType = pChannelType,
+                Spacial = pSpacial,
+                ParcelLocalID = pParcelLocalID,
+                ChannelID = pChannelID
+            };
+            // The "Abs()" is because Janus room number must be a positive integer
+            int roomNumber = Math.Abs(keyStruct.GetHashCode());
+
+            // Should be unique for the given use and channel type
+            m_log.DebugFormat("{0} SelectRoom: roomNumber={1}", LogHeader, roomNumber);
 
             // Check to see if the room has already been created
             lock (_rooms)
             {
-                if (_rooms.ContainsKey(roomDiffereniator))
+                if (_rooms.ContainsKey(roomNumber))
                 {
-                    return _rooms[roomDiffereniator];
+                    return _rooms[roomNumber];
                 }
             }
 
             // The room doesn't exist. Create it.
-            JanusRoom ret = await CreateRoom(_regionRoomID++, pSpacial, roomDiffereniator);
+            JanusRoom ret = await CreateRoom(roomNumber, pSpacial, roomNumber.ToString());
 
             JanusRoom existingRoom = null;
             if (ret is not null)
             {
                 lock (_rooms)
                 {
-                    if (_rooms.ContainsKey(roomDiffereniator))
+                    if (_rooms.ContainsKey(roomNumber))
                     {
                         // If the room was created while we were waiting, 
-                        existingRoom = _rooms[roomDiffereniator];
+                        existingRoom = _rooms[roomNumber];
                     }
                     else
                     {
                         // Our room is the first one created. Save it.
-                        _rooms[roomDiffereniator] = ret;
+                        _rooms[roomNumber] = ret;
                     }
                 }
             }
@@ -167,14 +184,7 @@ namespace WebRtcVoice
             JanusRoom ret = null;
             lock (_rooms)
             {
-                foreach (var room in _rooms)
-                {
-                    if (room.Value.RoomId == pRoomId)
-                    {
-                        ret = room.Value;
-                        break;
-                    }
-                }
+                _rooms.TryGetValue(pRoomId, out ret);
             }
             return ret;
         }   
