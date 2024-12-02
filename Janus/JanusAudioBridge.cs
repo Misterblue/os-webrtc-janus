@@ -115,27 +115,41 @@ namespace WebRtcVoice
         // Constant used to denote that this is a spacial audio room for the region (as opposed to parcels)
         public const int REGION_ROOM_ID = -999;
         private Dictionary<int, JanusRoom> _rooms = new Dictionary<int, JanusRoom>();
-        private struct RoomKey
+
+        // Calculate a room number for the given parameters. The room number is a hash of the parameters.
+        // The attempt is to deterministicly create a room number so all regions will generate the
+        //     same room number across sessions and across the grid.
+        // getHashCode() is not deterministic across sessions.
+        public static int CalcRoomNumber(string pRegionId, string pChannelType, int pParcelLocalID, string pChannelID)
         {
-            public string ChannelType;
-            public bool Spacial;
-            public int ParcelLocalID;
-            public string ChannelID;
-        }
-        public async Task<JanusRoom> SelectRoom(string pChannelType, bool pSpacial, int pParcelLocalID, string pChannelID)
-        {
-            // Hack to generate a unique room number for the given type of room.
-            // Several regions could point to the same Janus server so we need to make sure
-            //     the room is unique for the use.
-            RoomKey keyStruct = new RoomKey
+            var hasher = new BHasherMdjb2();
+            // If there is a channel specified it must be group 
+            switch (pChannelType)
             {
-                ChannelType = pChannelType,
-                Spacial = pSpacial,
-                ParcelLocalID = pParcelLocalID,
-                ChannelID = pChannelID
-            };
+                case "local":
+                    // A "local" channel is unique to the region and parcel
+                    hasher.Add(pRegionId);
+                    hasher.Add(pChannelType);
+                    hasher.Add(pParcelLocalID);
+                    break;
+                case "multiagent":
+                    // A "multiagent" channel is unique to the grid
+                    // should add a GridId here
+                    hasher.Add(pChannelID);
+                    hasher.Add(pChannelType);
+                    break;
+                default:
+                    throw new Exception("Unknown channel type: " + pChannelType);
+            }   
+            var hashed = hasher.Finish();
             // The "Abs()" is because Janus room number must be a positive integer
-            int roomNumber = Math.Abs(keyStruct.GetHashCode());
+            // And note that this is the BHash.GetHashCode() and not Object.getHashCode().
+            int roomNumber = Math.Abs(hashed.GetHashCode());
+            return roomNumber;
+        }
+        public async Task<JanusRoom> SelectRoom(string pRegionId, string pChannelType, bool pSpacial, int pParcelLocalID, string pChannelID)
+        {
+            int roomNumber = CalcRoomNumber(pRegionId, pChannelType, pParcelLocalID, pChannelID);
 
             // Should be unique for the given use and channel type
             m_log.DebugFormat("{0} SelectRoom: roomNumber={1}", LogHeader, roomNumber);

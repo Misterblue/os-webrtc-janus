@@ -92,7 +92,7 @@ namespace WebRtcVoice
         private void StartConnectionToJanus()
         {
             _log.DebugFormat("{0} StartConnectionToJanus", LogHeader);
-            Task.Run(async () => 
+            Task.Run(async () =>
             {
                 _ViewerSession = new JanusViewerSession(this);
                 await ConnectToSessionAndAudioBridge(_ViewerSession);
@@ -180,8 +180,10 @@ namespace WebRtcVoice
                     string jsepSdp = jsep["sdp"].AsString();
                     if (jsepType == "offer")
                     {
+                        // The client is sending an offer. Find the right room and join it.
                         _log.DebugFormat("{0} ProvisionVoiceAccountRequest: jsep type={1} sdp={2}", LogHeader, jsepType, jsepSdp);
-                        viewerSession.Room = await viewerSession.AudioBridge.SelectRoom(channel_type, isSpacial, parcel_local_id, channel_id);
+                        viewerSession.Room = await viewerSession.AudioBridge.SelectRoom(pScene.RegionInfo.RegionID.ToString(),
+                                                            channel_type, isSpacial, parcel_local_id, channel_id);
                         if (viewerSession.Room is null)
                         {
                             errorMsg = "room selection failed";

@@ -112,6 +112,9 @@
     <Compile Include="JanusAudioBridge.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="BHasher.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="WebRtcJanusService.cs">
       <SubType>Code</SubType>
     </Compile>
