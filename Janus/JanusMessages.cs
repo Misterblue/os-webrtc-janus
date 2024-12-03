@@ -179,9 +179,9 @@ namespace WebRtcVoice
         }}  
     }
     // ==============================================================
-    public class SessionDestroyReq : JanusMessageReq
+    public class DestroySessionReq : JanusMessageReq
     {
-        public SessionDestroyReq() : base("destroy")
+        public DestroySessionReq() : base("destroy")
         {
             // Doesn't include the session ID because it is the URI
         }
@@ -238,9 +238,17 @@ namespace WebRtcVoice
     {
         public DetachPluginReq() : base("detach")
         {
-            // Doesn't include the plugin ID because it is the URI
+            // Doesn't include the session ID or plugin ID because it is the URI
         }
     }
+    // ==============================================================
+    public class HangupReq : JanusMessageReq
+    {
+        public HangupReq() : base("hangup")
+        {
+            // Doesn't include the session ID or plugin ID because it is the URI
+        }
+    }   
     // ==============================================================
     // Plugin messages are defined here as wrappers around OSDMap.
     // The ToJson() method is overridden to put the OSDMap into the
@@ -426,6 +434,15 @@ namespace WebRtcVoice
         {
         }
 
-        public string sender { get { return m_message.ContainsKey("sender") ? m_message["sender"] : String.Empty; }}
+        public EventResp(JanusMessageResp pResp) : base(pResp.RawBody)
+        {
+        }
+
+        public string sessionId { 
+            get { return m_message.ContainsKey("session_id") ? m_message["session_id"].AsLong().ToString() : String.Empty; }
+        }
+        public string sender {
+            get { return m_message.ContainsKey("sender") ? m_message["sender"] : String.Empty; }
+        }
     }
 }

@@ -99,6 +99,7 @@ namespace WebRtcVoice
                     {
                         OnRegisterCaps(scene, agentID, caps);
                     };
+                
             }
         }
 
@@ -212,7 +213,7 @@ namespace WebRtcVoice
 
             m_log.DebugFormat("{0}[ProvisionVoice]: Request for {1}", logHeader, agentID.ToString());
 
-            // Deserialize the request
+            // Deserialize the request. Convert the LLSDXml to OSD for our use
             OSDMap map = null;
             using (Stream inputStream = request.InputStream)
             {
@@ -234,6 +235,7 @@ namespace WebRtcVoice
                 return;
             }
 
+            // Get the voice service. If it doesn't exist, return an error.
             IWebRtcVoiceService voiceService = scene.RequestModuleInterface<IWebRtcVoiceService>();
             if (voiceService is null)
             {
@@ -253,11 +255,14 @@ namespace WebRtcVoice
                 }
             }
 
+            // The checks passed. Send the request to the voice service.
             OSDMap resp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene).Result;
 
             m_log.DebugFormat("{0}[ProvisionVoice]: response: {1}", logHeader, resp.ToString());
 
             // TODO: check for erros and package the response
+
+            // Convert the OSD to LLSDXml for the response
             string xmlResp = OSDParser.SerializeLLSDXmlString(resp);
 
             response.StatusCode = (int)HttpStatusCode.OK;
@@ -276,7 +281,7 @@ namespace WebRtcVoice
 
             m_log.DebugFormat("{0}[VoiceSignaling]: Request for {1}", logHeader, agentID.ToString());
 
-            // Deserialize the request
+            // Deserialize the request. Convert the LLSDXml to OSD for our use
             OSDMap map = null;
             using (Stream inputStream = request.InputStream)
             {
@@ -316,17 +321,16 @@ namespace WebRtcVoice
                 return;
             }
 
-            m_log.DebugFormat("{0}[VoiceSignalingRequest]: message: {1}", logHeader, map.ToString());
             OSDMap resp = voiceService.VoiceSignalingRequest(map, agentID, scene).Result;
 
             // TODO: check for erros and package the response
-            m_log.DebugFormat("{0}[VoiceSignalingRequest]: message: {1}", logHeader, map.ToString());
 
             response.StatusCode = (int)HttpStatusCode.OK;
             response.RawBuffer = Util.UTF8.GetBytes("<llsd><undef /></llsd>");
             return;
         }
 
+        // NOTE NOTE!! This is code from the FreeSwitch module. It is not clear if this is correct for WebRtc.
         /// <summary>
         /// Callback for a client request for ParcelVoiceInfo
         /// </summary>
@@ -425,6 +429,7 @@ namespace WebRtcVoice
             }
         }
 
+        // NOTE NOTE!! This is code from the FreeSwitch module. It is not clear if this is correct for WebRtc.
         // Not sure what this Uri is for. Is this FreeSwitch specific?
         // TODO: is this useful for WebRtc?
         private string ChannelUri(Scene scene, LandData land)

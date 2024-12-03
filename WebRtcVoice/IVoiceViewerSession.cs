@@ -10,26 +10,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Reflection;
-
-using OpenSim.Server.Base;
-using OpenSim.Services.Base;
-using OpenSim.Services.Interfaces;
-
-using OpenMetaverse.StructuredData;
-using OpenMetaverse;
-using OpenSim.Framework;
-
-using Nini.Config;
-using log4net;
 using System.Threading.Tasks;
+using OpenMetaverse;
 
 namespace WebRtcVoice
 {
     public interface IVoiceViewerSession
     {
+        // This ID is passed to and from the viewer to identify the session
         public string ViewerSessionID { get; set; }
         public IWebRtcVoiceService VoiceService { get; set; }
+        // THis ID is passed between us and the voice service to idetify the session
+        public string VoiceServiceSessionId { get; set; }
+        // The UUID of the region that is being connected to
+        public UUID RegionId { get; set; }
+
+        // The simulator has a GUID to identify the user
+        public UUID AgentId { get; set; }
+
+        // Disconnect the connection to the voice service for this session
+        public Task Shutdown();
     }
 }

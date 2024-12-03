@@ -17,14 +17,8 @@ using System.Net.Mime;
 using System.Reflection;
 using System.Threading.Tasks;
 
-using OpenSim.Framework;
-using OpenSim.Services.Interfaces;
-using OpenSim.Services.Base;
-
 using OpenMetaverse.StructuredData;
-using OpenMetaverse;
 
-using Nini.Config;
 using log4net;
 
 namespace WebRtcVoice
@@ -62,15 +56,15 @@ namespace WebRtcVoice
 
         public void Dispose()
         {
+            ClearEventSubscriptions();
+            if (IsConnected)
+            {
+                _ = DestroySession();
+            }
             if (_HttpClient is not null)
             {
                 _HttpClient.Dispose();
                 _HttpClient = null;
-            }
-            if (IsConnected)
-            {
-                // Close the session
-
             }
         }
 
@@ -102,6 +96,32 @@ namespace WebRtcVoice
             catch (Exception e)
             {
                 m_log.ErrorFormat("{0} CreateSession: exception {1}", LogHeader, e);
+            }
+
+            return ret;
+        }
+
+        public async Task<bool> DestroySession()
+        {
+            bool ret = false;
+            try
+            {
+                var resp = await SendToSession(new DestroySessionReq());
+                if (resp is not null && resp.isSuccess)
+                {
+                    // Note that setting SessionID to null will cause the long poll to exit
+                    SessionId = String.Empty;
+                    SessionUri = String.Empty;
+                    m_log.DebugFormat("{0} DestroySession. Destroyed", LogHeader);
+                }
+                else
+                {
+                    m_log.ErrorFormat("{0} DestroySession: failed", LogHeader);
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} DestroySession: exception {1}", LogHeader, e);
             }
 
             return ret;
@@ -212,9 +232,12 @@ namespace WebRtcVoice
                     {
                         // Some messages are asynchronous and completed with an event
                         m_log.DebugFormat("{0} SendToJanus: ack response {1}", LogHeader, respStr);
-                        ret = await _OutstandingRequests[pReq.TransactionId].TaskCompletionSource.Task;
-                        _OutstandingRequests.Remove(pReq.TransactionId);
-
+                        if (_OutstandingRequests.TryGetValue(pReq.TransactionId, out OutstandingRequest outstandingRequest))
+                        {
+                            ret = await outstandingRequest.TaskCompletionSource.Task;
+                            _OutstandingRequests.Remove(pReq.TransactionId);
+                        }
+                        // If there is no OutstandingRequest, the request was not waiting for an event or already processed
                     }
                     else 
                     {
@@ -326,10 +349,10 @@ namespace WebRtcVoice
         }
 
         // ====================================================================
-        public delegate void JanusEventHandler(JanusMessageResp pResp);
+        public delegate void JanusEventHandler(EventResp pResp);
 
         // Not all the events are used. CS0067 is to suppress the warning that the event is not used.
-        #pragma warning disable CS0067
+        #pragma warning disable CS0067,CS0414
         public event JanusEventHandler OnKeepAlive;
         public event JanusEventHandler OnServerInfo;
         public event JanusEventHandler OnTrickle;
@@ -339,7 +362,19 @@ namespace WebRtcVoice
         public event JanusEventHandler OnEvent;
         public event JanusEventHandler OnJoined;
         public event JanusEventHandler OnLeaving;
-        #pragma warning restore CS0067
+        #pragma warning restore CS0067,CS0414
+        public void ClearEventSubscriptions()
+        {
+            OnKeepAlive = null;
+            OnServerInfo = null;
+            OnTrickle = null;
+            OnHangup = null;
+            OnDetached = null;
+            OnError = null;
+            OnEvent = null;
+            OnJoined = null;
+            OnLeaving = null;
+        }
         // ====================================================================
         /// <summary>
         /// In the REST API, events are returned by a long poll. This
@@ -359,11 +394,12 @@ namespace WebRtcVoice
                         {
                             _ = Task.Run(() =>
                             {
+                                EventResp eventResp = new EventResp(resp);
                                 switch (resp.ReturnCode)
                                 {
                                     case "keepalive":
                                         // These should happen every 30 seconds
-                                        m_log.DebugFormat("{0} EventLongPoll: keepalive {1}", LogHeader, resp.ToString());
+                                        // m_log.DebugFormat("{0} EventLongPoll: keepalive {1}", LogHeader, resp.ToString());
                                         break;
                                     case "server_info":
                                         // Just info on the Janus instance
@@ -381,7 +417,7 @@ namespace WebRtcVoice
                                         // got a trickle ICE candidate from Janus
                                         // this is for reverse communication from Janus to the client and we don't do that
                                         m_log.DebugFormat("{0} EventLongPoll: trickle {1}", LogHeader, resp.ToString());
-                                        OnTrickle?.Invoke(resp);
+                                        OnTrickle?.Invoke(eventResp);
                                         break;
                                     case "webrtcup":
                                         //  ICE and DTLS succeeded, and so Janus correctly established a PeerConnection with the user/application;
@@ -392,12 +428,12 @@ namespace WebRtcVoice
                                     case "hangup":
                                         // The PeerConnection was closed, either by the user/application or by Janus itself;
                                         m_log.DebugFormat("{0} EventLongPoll: hangup {1}", LogHeader, resp.ToString());
-                                        OnHangup?.Invoke(resp);
+                                        OnHangup?.Invoke(eventResp);
                                         break;
                                     case "detached":
                                         // a plugin asked the core to detach one of our handles
                                         m_log.DebugFormat("{0} EventLongPoll: event {1}", LogHeader, resp.ToString());
-                                        OnDetached?.Invoke(resp);
+                                        OnDetached?.Invoke(eventResp);
                                         break;
                                     case "media":
                                         // Janus is receiving (receiving: true/false) audio/video (type: "audio/video") on this PeerConnection;
@@ -419,7 +455,7 @@ namespace WebRtcVoice
                                         }
                                         else
                                         {
-                                            OnError?.Invoke(resp);
+                                            OnError?.Invoke(eventResp);
                                             m_log.ErrorFormat("{0} EventLongPoll: error with no transaction. {1}", LogHeader, resp.ToString());
                                         }
                                         break;
@@ -441,12 +477,12 @@ namespace WebRtcVoice
                                         break;
                                     case "joined":
                                         // Events for the audio bridge
-                                        OnJoined?.Invoke(resp);
+                                        OnJoined?.Invoke(eventResp);
                                         m_log.DebugFormat("{0} EventLongPoll: joined {1}", LogHeader, resp.ToString());
                                         break;
                                     case "leaving":
                                         // Events for the audio bridge
-                                        OnLeaving?.Invoke(resp);
+                                        OnLeaving?.Invoke(eventResp);
                                         m_log.DebugFormat("{0} EventLongPoll: leaving {1}", LogHeader, resp.ToString());
                                         break;
                                     default:

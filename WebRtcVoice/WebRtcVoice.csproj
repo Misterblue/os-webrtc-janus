@@ -114,5 +114,8 @@
     <Compile Include="IVoiceViewerSession.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="VoiceViewerSession.cs">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
 </Project>

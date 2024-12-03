@@ -99,5 +99,30 @@ namespace WebRtcVoice
 
             return ret;
         }
+
+        public virtual async Task<bool> Detach()
+        {
+            bool ret = false;
+            try
+            {
+                // We send the 'detach' message to the plugin URI
+                var resp = await _JanusSession.SendToJanus(new DetachPluginReq(), PluginUri);
+                if (resp is not null && resp.isSuccess)
+                {
+                    m_log.DebugFormat("{0} Detach. Detached", LogHeader);
+                    ret = true;
+                }
+                else
+                {
+                    m_log.ErrorFormat("{0} Detach: failed", LogHeader);
+                }
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} Detach: exception {1}", LogHeader, e);
+            }
+
+            return ret;
+        }   
     }
 }

@@ -10,39 +10,76 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Threading.Tasks;
+
 using OMV = OpenMetaverse;
 using OpenMetaverse.StructuredData;
+using OpenMetaverse;
 
 namespace WebRtcVoice
 {
     public class JanusViewerSession : IVoiceViewerSession
     {
         // 'viewer_session' that is passed to and from the viewer
-        public IWebRtcVoiceService VoiceService { get; set; }
+        // IVoiceViewerSession.ViewerSessionID
         public string ViewerSessionID { get; set; }
+        // IVoiceViewerSession.VoiceService
+        public IWebRtcVoiceService VoiceService { get; set; }
+        // The Janus server keeps track of the user by this ID
+        // IVoiceViewerSession.VoiceServiceSessionId
+        public string VoiceServiceSessionId { get; set; }
+        // IVoiceViewerSession.RegionId
+        public UUID RegionId { get; set; }
+        // IVoiceViewerSession.AgentId
+        public UUID AgentId { get; set; }
+
+        // Janus keeps track of the user by this ID
+        public int ParticipantId { get; set; }
+
+        // Connections to the Janus server
         public JanusSession Session { get; set; }
         public JanusAudioBridge AudioBridge { get; set; }
         public JanusRoom Room { get; set; }
+
+        // This keeps copies of the offer/answer incase we need to resend
         public string OfferOrig { get; set; }
         public string Offer { get; set; }
         // Contains "type" and "sdp" fields
         public OSDMap Answer { get; set; }
 
-        // The simulator has a GUID to identify the user
-        public string AgentId { get; set; }
-
-        // The Janus server keeps track of the user by this ID
-        public int JanusAttendeeId;
-
         public JanusViewerSession(IWebRtcVoiceService pVoiceService)
         {
-            VoiceService = pVoiceService;
             ViewerSessionID = OMV.UUID.Random().ToString();
-        }
-        public JanusViewerSession(string pSessionID, IWebRtcVoiceService pVoiceService)
-        {
             VoiceService = pVoiceService;
-            ViewerSessionID = pSessionID;
+        }
+        public JanusViewerSession(string pViewerSessionID, IWebRtcVoiceService pVoiceService)
+        {
+            ViewerSessionID = pViewerSessionID;
+            VoiceService = pVoiceService;
+        }
+
+        // Send the messages to the voice service to try and get rid of the session
+        // IVoiceViewerSession.Shutdown
+        public async Task Shutdown()
+        {
+            if (Room is not null)
+            {
+                var rm = Room;
+                Room = null;
+                await rm.LeaveRoom(this);
+            }
+            if (AudioBridge is not null)
+            {
+                var ab = AudioBridge;
+                AudioBridge = null;
+                await ab.Detach();
+            }   
+            if (Session is not null)
+            {
+                var s = Session;
+                Session = null;
+                await s.DestroySession();
+            }
         }
     }
 }

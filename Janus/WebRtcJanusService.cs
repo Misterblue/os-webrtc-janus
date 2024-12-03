@@ -70,6 +70,7 @@ namespace WebRtcVoice
                     {
                         _log.DebugFormat("{0} Enabled", LogHeader);
                         StartConnectionToJanus();
+                        RegisterConsoleCommands();
                     }
                 }
                 else
@@ -110,8 +111,11 @@ namespace WebRtcVoice
                 JanusAudioBridge audioBridge = new JanusAudioBridge(janusSession);
                 janusSession.AddPlugin(audioBridge);
 
+                pViewerSession.VoiceServiceSessionId = janusSession.SessionId;
                 pViewerSession.Session = janusSession;
                 pViewerSession.AudioBridge = audioBridge;
+
+                janusSession.OnHangup += Handle_Hangup;
 
                 if (await audioBridge.Activate(_Config))
                 {
@@ -127,6 +131,29 @@ namespace WebRtcVoice
             {
                 _log.ErrorFormat("{0} JanusSession not created", LogHeader);
             }   
+        }
+
+        private void Handle_Hangup(EventResp pResp)
+        {
+            if (pResp is not null)
+            {
+                var sessionId = pResp.sessionId;
+                _log.DebugFormat("{0} Handle_Hangup: {1}, sessionId={2}", LogHeader, pResp.RawBody.ToString(), sessionId);
+                if (VoiceViewerSession.TryGetViewerSessionByVSSessionId(sessionId, out IVoiceViewerSession viewerSession))
+                {
+                    // There is a viewer session associated with this session
+                    Task.Run(() =>
+                    {
+                        VoiceViewerSession.RemoveViewerSession(viewerSession.ViewerSessionID);
+                        // No need to wait for the session to be shutdown
+                        _ = viewerSession.Shutdown();
+                    });
+                }
+                else
+                {
+                    _log.DebugFormat("{0} Handle_Hangup: no session found", LogHeader);
+                }
+            }
         }
 
         // The pRequest parameter is a straight conversion of the JSON request from the client.
@@ -181,7 +208,7 @@ namespace WebRtcVoice
                     if (jsepType == "offer")
                     {
                         // The client is sending an offer. Find the right room and join it.
-                        _log.DebugFormat("{0} ProvisionVoiceAccountRequest: jsep type={1} sdp={2}", LogHeader, jsepType, jsepSdp);
+                        // _log.DebugFormat("{0} ProvisionVoiceAccountRequest: jsep type={1} sdp={2}", LogHeader, jsepType, jsepSdp);
                         viewerSession.Room = await viewerSession.AudioBridge.SelectRoom(pScene.RegionInfo.RegionID.ToString(),
                                                             channel_type, isSpacial, parcel_local_id, channel_id);
                         if (viewerSession.Room is null)
@@ -192,7 +219,7 @@ namespace WebRtcVoice
                         else {
                             viewerSession.Offer = jsepSdp;
                             viewerSession.OfferOrig = jsepSdp;
-                            viewerSession.AgentId = pUserID.ToString();
+                            viewerSession.AgentId = pUserID;
                             if (await viewerSession.Room.JoinRoom(viewerSession))    
                             {
                                 ret = new OSDMap
@@ -294,20 +321,53 @@ namespace WebRtcVoice
             return ret;
         }
 
+        // This module should not be invoked with this signature
+        // IWebRtcVoiceService.ProvisionVoiceAccountRequest
         public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             throw new NotImplementedException();
         }
 
+        // This module should not be invoked with this signature
+        // IWebRtcVoiceService.VoiceSignalingRequest
         public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
             throw new NotImplementedException();
         }
 
         // The viewer session object holds all the connection information to Janus.
+        // IWebRtcVoiceService.CreateViewerSession
         public IVoiceViewerSession CreateViewerSession(OSDMap pRequest, UUID pUserID, IScene pScene)
         {
-            return new JanusViewerSession(this);
+            return new JanusViewerSession(this)
+            {
+                AgentId = pUserID,
+                RegionId = pScene.RegionInfo.RegionID
+            };
         }
+
+        // ======================================================================================================
+        private void RegisterConsoleCommands()
+        {
+            MainConsole.Instance.Commands.AddCommand("Webrtc", false, "janus info",
+                "janus info",
+                "Show Janus server information",
+                HandleJanusInfo);
+            // List rooms
+            // List participants in a room
+        }
+
+        private void HandleJanusInfo(string module, string[] cmdparms)
+        {
+            WriteOut("{0} Janus server: {1}", LogHeader, _JanusServerURI);
+        }
+
+        private void WriteOut(string msg, params object[] args)
+        {
+            // m_log.InfoFormat(msg, args);
+            MainConsole.Instance.Output(msg, args);
+        }
+
+
     }
  }

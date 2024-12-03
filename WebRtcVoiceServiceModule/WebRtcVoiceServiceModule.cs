@@ -11,17 +11,18 @@
 // limitations under the License.
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 
-using OpenSim.Server.Base;
+using OpenSim.Framework;
 using OpenSim.Region.Framework.Scenes;
 using OpenSim.Region.Framework.Interfaces;
+using OpenSim.Server.Base;
 
-using OpenMetaverse.StructuredData;
 using OpenMetaverse;
-using OpenSim.Framework;
+using OpenMetaverse.StructuredData;
 
 using Mono.Addins;
 
@@ -54,20 +55,6 @@ namespace WebRtcVoice
         private IWebRtcVoiceService m_spacialVoiceService;
         private IWebRtcVoiceService m_nonSpacialVoiceService;
 
-        // =====================================================================
-        public static Dictionary<string, IVoiceViewerSession> ViewerSessions = new Dictionary<string, IVoiceViewerSession>();
-        public static bool TryGetViewerSession(string pSessionId, out IVoiceViewerSession pViewerSession)
-        {
-            return ViewerSessions.TryGetValue(pSessionId, out pViewerSession);
-        }
-        public static void AddViewerSession(IVoiceViewerSession pSession)
-        {
-            ViewerSessions[pSession.ViewerSessionID] = pSession;
-        }
-        public static void RemoveViewerSession(string pSessionId)
-        {
-            ViewerSessions.Remove(pSessionId);
-        }
         // =====================================================================
 
         // ISharedRegionModule.Initialize
@@ -153,6 +140,19 @@ namespace WebRtcVoice
             {
                 m_log.DebugFormat("{0} Adding WebRtcVoiceService to region {1}", LogHeader, scene.Name);
                 scene.RegisterModuleInterface<IWebRtcVoiceService>(this);
+
+                // TODO: figure out what events we care about
+                // When new client (child or root) is added to scene, before OnClientLogin
+                // scene.EventManager.OnNewClient         += Event_OnNewClient;
+                // When client is added on login.
+                // scene.EventManager.OnClientLogin       += Event_OnClientLogin;
+                // New presence is added to scene. Child, root, and NPC. See Scene.AddNewAgent()
+                // scene.EventManager.OnNewPresence       += Event_OnNewPresence;
+                // scene.EventManager.OnRemovePresence    += Event_OnRemovePresence;
+                // update to client position (either this or 'significant')
+                // scene.EventManager.OnClientMovement    += Event_OnClientMovement;
+                // "significant" update to client position
+                // scene.EventManager.OnSignificantClientMovement += Event_OnSignificantClientMovement;
             }
 
         }
@@ -172,6 +172,22 @@ namespace WebRtcVoice
         }
 
         // =====================================================================
+        // Thought about doing this but currently relying on the voice service
+        //     event ("hangup") to remove the viewer session.
+        private void Event_OnRemovePresence(UUID pAgentID)
+        {
+            // When a presence is removed, remove the viewer sessions for that agent
+            IEnumerable<KeyValuePair<string, IVoiceViewerSession>> vSessions;
+            if (VoiceViewerSession.TryGetViewerSessionByAgentId(pAgentID, out vSessions))
+            {
+                foreach(KeyValuePair<string, IVoiceViewerSession> v in vSessions)
+                {
+                    VoiceViewerSession.RemoveViewerSession(v.Key);
+                    v.Value.Shutdown();
+                }
+            }
+        }
+        // =====================================================================
         // IWebRtcVoiceService
 
         // IWebRtcVoiceService.ProvisionVoiceAccountRequest
@@ -183,11 +199,7 @@ namespace WebRtcVoice
             {
                 // request has a viewer session. Use that to find the voice service
                 string viewerSessionId = pRequest["viewer_session"].AsString();
-                if (TryGetViewerSession(viewerSessionId, out vSession))
-                {
-                    response = await vSession.VoiceService.ProvisionVoiceAccountRequest(vSession, pRequest, pUserID, pScene);
-                }
-                else
+                if (!VoiceViewerSession.TryGetViewerSession(viewerSessionId, out vSession))
                 {
                     m_log.ErrorFormat("{0} ProvisionVoiceAccountRequest: viewer session {1} not found", LogHeader, viewerSessionId);
                 }
@@ -200,21 +212,25 @@ namespace WebRtcVoice
                     string channelType = pRequest["channel_type"].AsString();
                     if (channelType == "local")
                     {
+                        // TODO: check if this userId is making a new session (case that user is reconnecting)
                         vSession = m_spacialVoiceService.CreateViewerSession(pRequest, pUserID, pScene);
-                        AddViewerSession(vSession);
-                        response = await m_spacialVoiceService.ProvisionVoiceAccountRequest(vSession, pRequest, pUserID, pScene);
+                        VoiceViewerSession.AddViewerSession(vSession);
                     }
                     else
                     {
+                        // TODO: check if this userId is making a new session (case that user is reconnecting)
                         vSession = m_nonSpacialVoiceService.CreateViewerSession(pRequest, pUserID, pScene);
-                        AddViewerSession(vSession);
-                        response = await m_nonSpacialVoiceService.ProvisionVoiceAccountRequest(vSession, pRequest, pUserID, pScene);
+                        VoiceViewerSession.AddViewerSession(vSession);
                     }
                 }
                 else
                 {
                     m_log.ErrorFormat("{0} ProvisionVoiceAccountRequest: no channel_type in request", LogHeader);
                 }
+            }
+            if (vSession is not null)
+            {
+                response = await vSession.VoiceService.ProvisionVoiceAccountRequest(vSession, pRequest, pUserID, pScene);
             }
             return response;
         }
@@ -228,7 +244,7 @@ namespace WebRtcVoice
             {
                 // request has a viewer session. Use that to find the voice service
                 string viewerSessionId = pRequest["viewer_session"].AsString();
-                if (TryGetViewerSession(viewerSessionId, out vSession))
+                if (VoiceViewerSession.TryGetViewerSession(viewerSessionId, out vSession))
                 {
                     response = await vSession.VoiceService.VoiceSignalingRequest(vSession, pRequest, pUserID, pScene);
                 }

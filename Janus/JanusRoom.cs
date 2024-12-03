@@ -61,7 +61,7 @@ namespace WebRtcVoice
                 //    and, if removed, the viewer complains that the "m=" sections are
                 //    out of order. Not "cleaning" (removing the data section) seems to work.
                 // string cleanSdp = CleanupSdp(pSdp);
-                var joinReq = new AudioBridgeJoinRoomReq(RoomId, pVSession.AgentId);
+                var joinReq = new AudioBridgeJoinRoomReq(RoomId, pVSession.AgentId.ToString());
                 // m_log.DebugFormat("{0} JoinRoom. New joinReq for room {1}", LogHeader, RoomId);
                 // joinReq.SetJsep("offer", cleanSdp);
                 joinReq.SetJsep("offer", pVSession.Offer);
@@ -72,7 +72,7 @@ namespace WebRtcVoice
                 if (joinResp is not null && joinResp.AudioBridgeReturnCode == "joined")
                 {
                     m_log.DebugFormat("{0} JoinRoom. Joined room {1}", LogHeader, RoomId);
-                    pVSession.JanusAttendeeId = joinResp.ParticipantId;
+                    pVSession.ParticipantId = joinResp.ParticipantId;
                     pVSession.Answer = joinResp.Jsep;
                     ret = true;
                 }
@@ -88,24 +88,22 @@ namespace WebRtcVoice
             return ret;
         }
 
-        // The SDP coming from the client has some things that Janus doesn't like.
-        // In particular, the data section must be removed so the audio bridge
-        //     gets an audio only offer.
-        private string CleanupSdp(string pSdp)
+        // TODO: this doesn't work.
+        // Not sure if it is needed. Janus generates Hangup events when the viewer leaves.
+        /*
+        public async Task<bool> Hangup(JanusViewerSession pAttendeeSession)
         {
-            string ret = pSdp;
+            bool ret = false;
             try
             {
-                string dataSection = "m=application [^\\r\\n]* webrtc-datachannel.*";
-                ret = Regex.Replace(pSdp, dataSection, "", RegexOptions.Singleline);
-                m_log.DebugFormat("{0} CleanupSdp. cleaned={1}", LogHeader, ret);
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat("{0} CleanupSdp. Exception {1}", LogHeader, e);
+                m_log.ErrorFormat("{0} LeaveRoom. Exception {1}", LogHeader, e);
             }
             return ret;
         }
+        */
 
         public async Task<bool> LeaveRoom(JanusViewerSession pAttendeeSession)
         {
@@ -113,7 +111,7 @@ namespace WebRtcVoice
             try
             {
                 JanusMessageResp resp = await _AudioBridge.SendPluginMsg(
-                    new AudioBridgeLeaveRoomReq(RoomId, pAttendeeSession.JanusAttendeeId));
+                    new AudioBridgeLeaveRoomReq(RoomId, pAttendeeSession.ParticipantId));
             }
             catch (Exception e)
             {
