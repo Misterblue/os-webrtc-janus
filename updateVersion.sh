@@ -2,6 +2,7 @@
 # Script to add the number from the VERSION file to the .csproj of the sub-projects
 # Run this just after running runprebuild.sh to add versions to the .csproj files.
 
+cd $(dirname -- "$0")
 BASE=$(pwd)
 
 VERSION=$(cat VERSION)
