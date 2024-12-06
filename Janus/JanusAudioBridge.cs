@@ -61,15 +61,15 @@ namespace WebRtcVoice
         /// is only being used for our voice service.
         /// </summary>
         /// <param name="pRoomId">integer room ID to create</param>
-        /// <param name="pSpacial">boolean on whether room will be spacial or non-spacial</param>
+        /// <param name="pSpatial">boolean on whether room will be spatial or non-spatial</param>
         /// <param name="pRoomDesc">added as "description" to the created room</param>
         /// <returns></returns>
-        public async Task<JanusRoom> CreateRoom(int pRoomId, bool pSpacial, string pRoomDesc)
+        public async Task<JanusRoom> CreateRoom(int pRoomId, bool pSpatial, string pRoomDesc)
         {
             JanusRoom ret = null;
             try
             {
-                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeCreateRoomReq(pRoomId, pSpacial, pRoomDesc));
+                JanusMessageResp resp = await SendPluginMsg(new AudioBridgeCreateRoomReq(pRoomId, pSpatial, pRoomDesc));
                 AudioBridgeResp abResp = new AudioBridgeResp(resp);
 
                 m_log.DebugFormat("{0} CreateRoom. ReturnCode: {1}", LogHeader, abResp.AudioBridgeReturnCode);
@@ -117,7 +117,7 @@ namespace WebRtcVoice
             return ret;
         }
 
-        // Constant used to denote that this is a spacial audio room for the region (as opposed to parcels)
+        // Constant used to denote that this is a spatial audio room for the region (as opposed to parcels)
         public const int REGION_ROOM_ID = -999;
         private Dictionary<int, JanusRoom> _rooms = new Dictionary<int, JanusRoom>();
 
@@ -152,7 +152,7 @@ namespace WebRtcVoice
             int roomNumber = Math.Abs(hashed.GetHashCode());
             return roomNumber;
         }
-        public async Task<JanusRoom> SelectRoom(string pRegionId, string pChannelType, bool pSpacial, int pParcelLocalID, string pChannelID)
+        public async Task<JanusRoom> SelectRoom(string pRegionId, string pChannelType, bool pSpatial, int pParcelLocalID, string pChannelID)
         {
             int roomNumber = CalcRoomNumber(pRegionId, pChannelType, pParcelLocalID, pChannelID);
 
@@ -169,7 +169,7 @@ namespace WebRtcVoice
             }
 
             // The room doesn't exist. Create it.
-            JanusRoom ret = await CreateRoom(roomNumber, pSpacial, roomNumber.ToString());
+            JanusRoom ret = await CreateRoom(roomNumber, pSpatial, roomNumber.ToString());
 
             JanusRoom existingRoom = null;
             if (ret is not null)

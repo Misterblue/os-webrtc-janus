@@ -355,13 +355,13 @@ namespace WebRtcVoice
         public AudioBridgeCreateRoomReq(int pRoomId) : this(pRoomId, false, null)
         {
         }
-        public AudioBridgeCreateRoomReq(int pRoomId, bool pSpacial, string pDesc) : base(new OSDMap() {
+        public AudioBridgeCreateRoomReq(int pRoomId, bool pSpatial, string pDesc) : base(new OSDMap() {
                                                 { "room", pRoomId },
                                                 { "request", "create" },
                                                 { "is_private", false },
                                                 { "permanent", false },
                                                 { "sampling_rate", 48000 },
-                                                { "spatial_audio", pSpacial },
+                                                { "spatial_audio", pSpatial },
                                                 { "denoise", false },
                                                 { "record", false }
                                             })  

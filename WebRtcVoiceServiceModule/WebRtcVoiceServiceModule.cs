@@ -38,9 +38,9 @@ namespace WebRtcVoice
     /// Interface for the WebRtcVoiceService.
     /// An instance of this is registered as the IWebRtcVoiceService for this region.
     /// The function here is to direct the capability requests to the appropriate voice service.
-    /// For the moment, there are separate voice services for spacial and non-spacial voice
-    /// with the idea that a region could have a pre-region spacial voice service while
-    /// the grid could have a non-spacial voice service for group chat, etc.
+    /// For the moment, there are separate voice services for spatial and non-spatial voice
+    /// with the idea that a region could have a pre-region spatial voice service while
+    /// the grid could have a non-spatial voice service for group chat, etc.
     /// Fancier configurations are possible.
     /// </summary>
     [Extension(Path = "/OpenSim/RegionModules", NodeName = "RegionModule", Id = "WebRtcVoiceServiceModule")]
@@ -52,13 +52,13 @@ namespace WebRtcVoice
         private static bool m_Enabled = false;
         private IConfigSource m_Config;
 
-        private IWebRtcVoiceService m_spacialVoiceService;
-        private IWebRtcVoiceService m_nonSpacialVoiceService;
+        private IWebRtcVoiceService m_spatialVoiceService;
+        private IWebRtcVoiceService m_nonSpatialVoiceService;
 
         // =====================================================================
 
         // ISharedRegionModule.Initialize
-        // Get configuration and load the modules that will handle spacial and non-spacial voice.
+        // Get configuration and load the modules that will handle spatial and non-spatial voice.
         public void Initialise(IConfigSource pConfig)
         {
             m_log.DebugFormat("{0} WebRtcVoiceServiceModule constructor", LogHeader);
@@ -71,35 +71,35 @@ namespace WebRtcVoice
                 if (m_Enabled)
                 {
                     // Get the DLLs for the two voice services
-                    string spacialDllName = moduleConfig.GetString("SpacialVoiceService", String.Empty);
-                    string nonSpacialDllName = moduleConfig.GetString("NonSpacialVoiceService", String.Empty);
-                    if (String.IsNullOrEmpty(spacialDllName) && String.IsNullOrEmpty(nonSpacialDllName))
+                    string spatialDllName = moduleConfig.GetString("SpatialVoiceService", String.Empty);
+                    string nonSpatialDllName = moduleConfig.GetString("NonSpatialVoiceService", String.Empty);
+                    if (String.IsNullOrEmpty(spatialDllName) && String.IsNullOrEmpty(nonSpatialDllName))
                     {
-                        m_log.ErrorFormat("{0} No SpacialVoiceService or NonSpacialVoiceService specified in configuration", LogHeader);
+                        m_log.ErrorFormat("{0} No SpatialVoiceService or NonSpatialVoiceService specified in configuration", LogHeader);
                         m_Enabled = false;
                     }
 
-                    // Default non-spacial to spacial if not specified
-                    if (String.IsNullOrEmpty(nonSpacialDllName))
+                    // Default non-spatial to spatial if not specified
+                    if (String.IsNullOrEmpty(nonSpatialDllName))
                     {
-                        m_log.DebugFormat("{0} nonSpacialDllName not specified. Defaulting to spacialDllName", LogHeader);
-                        nonSpacialDllName = spacialDllName;
+                        m_log.DebugFormat("{0} nonSpatialDllName not specified. Defaulting to spatialDllName", LogHeader);
+                        nonSpatialDllName = spatialDllName;
                     }
 
                     // Load the two voice services
-                    m_log.DebugFormat("{0} Loading SpacialVoiceService from {1}", LogHeader, spacialDllName);
-                    m_spacialVoiceService = ServerUtils.LoadPlugin<IWebRtcVoiceService>(spacialDllName, new object[] { m_Config });
-                    if (m_spacialVoiceService is null)
+                    m_log.DebugFormat("{0} Loading SpatialVoiceService from {1}", LogHeader, spatialDllName);
+                    m_spatialVoiceService = ServerUtils.LoadPlugin<IWebRtcVoiceService>(spatialDllName, new object[] { m_Config });
+                    if (m_spatialVoiceService is null)
                     {
-                        m_log.ErrorFormat("{0} Could not load SpacialVoiceService from {1}", LogHeader, spacialDllName);
+                        m_log.ErrorFormat("{0} Could not load SpatialVoiceService from {1}", LogHeader, spatialDllName);
                         m_Enabled = false;
                     }
 
-                    m_log.DebugFormat("{0} Loading NonSpacialVoiceService from {1}", LogHeader, nonSpacialDllName);
-                    m_nonSpacialVoiceService = ServerUtils.LoadPlugin<IWebRtcVoiceService>(nonSpacialDllName, new object[] { m_Config });
-                    if (m_nonSpacialVoiceService is null)
+                    m_log.DebugFormat("{0} Loading NonSpatialVoiceService from {1}", LogHeader, nonSpatialDllName);
+                    m_nonSpatialVoiceService = ServerUtils.LoadPlugin<IWebRtcVoiceService>(nonSpatialDllName, new object[] { m_Config });
+                    if (m_nonSpatialVoiceService is null)
                     {
-                        m_log.ErrorFormat("{0} Could not load NonSpacialVoiceService from {1}", LogHeader, nonSpacialDllName);
+                        m_log.ErrorFormat("{0} Could not load NonSpatialVoiceService from {1}", LogHeader, nonSpatialDllName);
                         m_Enabled = false;
                     }
 
@@ -213,13 +213,13 @@ namespace WebRtcVoice
                     if (channelType == "local")
                     {
                         // TODO: check if this userId is making a new session (case that user is reconnecting)
-                        vSession = m_spacialVoiceService.CreateViewerSession(pRequest, pUserID, pScene);
+                        vSession = m_spatialVoiceService.CreateViewerSession(pRequest, pUserID, pScene);
                         VoiceViewerSession.AddViewerSession(vSession);
                     }
                     else
                     {
                         // TODO: check if this userId is making a new session (case that user is reconnecting)
-                        vSession = m_nonSpacialVoiceService.CreateViewerSession(pRequest, pUserID, pScene);
+                        vSession = m_nonSpatialVoiceService.CreateViewerSession(pRequest, pUserID, pScene);
                         VoiceViewerSession.AddViewerSession(vSession);
                     }
                 }

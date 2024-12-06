@@ -195,7 +195,7 @@ namespace WebRtcVoice
                 string channel_id = pRequest.ContainsKey("channel_id") ? pRequest["channel_id"].AsString() : String.Empty;
                 string channel_credentials = pRequest.ContainsKey("credentials") ? pRequest["credentials"].AsString() : String.Empty;
                 string channel_type = pRequest["channel_type"].AsString();
-                bool isSpacial = channel_type == "local";
+                bool isSpatial = channel_type == "local";
                 string voice_server_type = pRequest["voice_server_type"].AsString();
 
                 _log.DebugFormat("{0} ProvisionVoiceAccountRequest: parcel_id={1} channel_id={2} channel_type={3} voice_server_type={4}", LogHeader, parcel_local_id, channel_id, channel_type, voice_server_type); 
@@ -210,7 +210,7 @@ namespace WebRtcVoice
                         // The client is sending an offer. Find the right room and join it.
                         // _log.DebugFormat("{0} ProvisionVoiceAccountRequest: jsep type={1} sdp={2}", LogHeader, jsepType, jsepSdp);
                         viewerSession.Room = await viewerSession.AudioBridge.SelectRoom(pScene.RegionInfo.RegionID.ToString(),
-                                                            channel_type, isSpacial, parcel_local_id, channel_id);
+                                                            channel_type, isSpatial, parcel_local_id, channel_id);
                         if (viewerSession.Room is null)
                         {
                             errorMsg = "room selection failed";
@@ -387,7 +387,7 @@ namespace WebRtcVoice
                     {
                         MainConsole.Instance.Output(
                             "  {0,10} {1,15} {2,5} {3,10} {4,7} {5,7}",
-                            "Room", "Description", "Num", "SampleRate", "Spacial", "Recording");
+                            "Room", "Description", "Num", "SampleRate", "Spatial", "Recording");
                         foreach (OSDMap room in list as OSDArray)
                         {
                             MainConsole.Instance.Output(
