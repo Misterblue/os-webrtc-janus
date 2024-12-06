@@ -32,8 +32,8 @@ namespace WebRtcVoice
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly string LogHeader = "[JANUS PLUGIN]";
 
-        private IConfigSource _Config;
-        private JanusSession _JanusSession;
+        protected IConfigSource _Config;
+        protected JanusSession _JanusSession;
 
         public string PluginName { get; private set; }
         public string PluginId { get; private set; }

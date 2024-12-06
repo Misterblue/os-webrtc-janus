@@ -349,17 +349,63 @@ namespace WebRtcVoice
         // ======================================================================================================
         private void RegisterConsoleCommands()
         {
-            MainConsole.Instance.Commands.AddCommand("Webrtc", false, "janus info",
-                "janus info",
-                "Show Janus server information",
-                HandleJanusInfo);
-            // List rooms
-            // List participants in a room
+            if (_Enabled) {
+                MainConsole.Instance.Commands.AddCommand("Webrtc", false, "janus info",
+                    "janus info",
+                    "Show Janus server information",
+                    HandleJanusInfo);
+                MainConsole.Instance.Commands.AddCommand("Webrtc", false, "janus listrooms",
+                    "janus listrooms",
+                    "List the rooms on the Janus server",
+                    HandleJanusListRooms);
+                // List rooms
+                // List participants in a room
+            }
         }
 
-        private void HandleJanusInfo(string module, string[] cmdparms)
+        private async void HandleJanusInfo(string module, string[] cmdparms)
         {
-            WriteOut("{0} Janus server: {1}", LogHeader, _JanusServerURI);
+            if (_ViewerSession is not null && _ViewerSession.Session is not null)
+            {
+                WriteOut("{0} Janus session: {1}", LogHeader, _ViewerSession.Session.SessionId);
+                string infoURI = _ViewerSession.Session.JanusServerURI + "/info";
+                var resp = await _ViewerSession.Session.GetFromJanus(infoURI);
+                if (resp is not null)
+                    MainConsole.Instance.Output(resp.ToJson());
+            }
+        }
+
+        private async void HandleJanusListRooms(string module, string[] cmdparms)
+        {
+            if (_ViewerSession is not null && _ViewerSession.Session is not null && _ViewerSession.AudioBridge is not null)
+            {
+                var ab = _ViewerSession.AudioBridge;
+                var resp = await ab.SendAudioBridgeMsg(new AudioBridgeListRoomsReq());
+                if (resp is not null && resp.isSuccess)
+                {
+                    if (resp.PluginRespData.TryGetValue("list", out OSD list))
+                    {
+                        MainConsole.Instance.Output(
+                            "  {0,10} {1,15} {2,5} {3,10} {4,7} {5,7}",
+                            "Room", "Description", "Num", "SampleRate", "Spacial", "Recording");
+                        foreach (OSDMap room in list as OSDArray)
+                        {
+                            MainConsole.Instance.Output(
+                                "  {0,10} {1,15} {2,5} {3,10} {4,7} {5,7}",
+                                room["room"], room["description"], room["num_participants"],
+                                room["sampling_rate"], room["spatial_audio"], room["record"]);
+                        }
+                    }
+                    else
+                    {
+                        MainConsole.Instance.Output("No rooms");
+                    }
+                }
+                else
+                {
+                    MainConsole.Instance.Output("Failed to get room list");
+                }
+            }
         }
 
         private void WriteOut(string msg, params object[] args)

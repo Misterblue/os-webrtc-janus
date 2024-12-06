@@ -309,12 +309,14 @@ namespace WebRtcVoice
                 if (m_pluginData.ContainsKey("data"))
                 {
                     m_data = m_pluginData["data"] as OSDMap;
-                    m_log.DebugFormat("{0} AudioBridgeResp. Found both plugindata and data: data={1}", LogHeader, m_data.ToString());
+                    // m_log.DebugFormat("{0} AudioBridgeResp. Found both plugindata and data: data={1}", LogHeader, m_data.ToString());
                 }
             }
         }
 
-        protected int PluginRespDataInt(string pKey)
+        public OSDMap PluginRespData { get { return m_data; } }
+
+        public int PluginRespDataInt(string pKey)
         {
             int ret = 0;
             if (m_data is not null && m_data.ContainsKey(pKey))
@@ -323,7 +325,7 @@ namespace WebRtcVoice
             }
             return ret;
         }
-        protected string PluginRespDataString(string pKey)
+        public string PluginRespDataString(string pKey)
         {
             string ret = String.Empty;
             if (m_data is not null && m_data.ContainsKey(pKey))
@@ -339,6 +341,7 @@ namespace WebRtcVoice
         public AudioBridgeResp(JanusMessageResp pResp) : base(pResp)
         {
         }
+        public override bool isSuccess { get { return PluginRespDataString("audiobridge") == "success"; } }
         // Return the return code if it is in the response or empty string if not
         public string AudioBridgeReturnCode { get { return PluginRespDataString("audiobridge"); } }
         // Return the error code if it is in the response or zero if not
@@ -422,6 +425,15 @@ namespace WebRtcVoice
                                                 { "request", "leave" },
                                                 { "room", pRoomId },
                                                 { "id", pAttendeeId }
+                                            })  
+        {
+        }
+    }
+    // ==============================================================
+    public class AudioBridgeListRoomsReq : PluginMsgReq
+    {
+        public AudioBridgeListRoomsReq() : base(new OSDMap() {
+                                                { "request", "list" }
                                             })  
         {
         }

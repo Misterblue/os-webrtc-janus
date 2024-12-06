@@ -11,20 +11,11 @@
 // limitations under the License.
 
 using System;
-using System.Reflection;
-
-using OpenSim.Framework;
-using OpenSim.Services.Interfaces;
-using OpenSim.Services.Base;
-
-using OpenMetaverse.StructuredData;
-using OpenMetaverse;
-
-using Nini.Config;
-using log4net;
-using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+using System.Reflection;
+using System.Threading.Tasks;
+
+using log4net;
 
 namespace WebRtcVoice
 {
@@ -47,6 +38,20 @@ namespace WebRtcVoice
                 // Close the handle
 
             }
+        }
+
+        public async Task<AudioBridgeResp> SendAudioBridgeMsg(PluginMsgReq pMsg)
+        {
+            AudioBridgeResp ret = null;
+            try
+            {
+                ret = new AudioBridgeResp(await SendPluginMsg(pMsg));
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} SendPluginMsg. Exception {1}", LogHeader, e);
+            }
+            return ret;
         }
 
         /// <summary>
