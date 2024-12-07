@@ -29,6 +29,9 @@ namespace WebRtcVoice
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly string LogHeader = "[JANUS SESSION]";
 
+        // Set to 'true' to get the messages send and received from Janus
+        private bool MessageDetails = false;
+
         private string _JanusServerURI = String.Empty;
         private string _JanusAPIToken = String.Empty;
         private string _JanusAdminURI = String.Empty;
@@ -205,7 +208,7 @@ namespace WebRtcVoice
                 pReq.TransactionId = Guid.NewGuid().ToString();
             }
             // m_log.DebugFormat("{0} SendToJanus", LogHeader);
-            m_log.DebugFormat("{0} SendToJanus. URI={1}, req={2}", LogHeader, pURI, pReq.ToJson());
+            if (MessageDetails) m_log.DebugFormat("{0} SendToJanus. URI={1}, req={2}", LogHeader, pURI, pReq.ToJson());
 
             JanusMessageResp ret = null;
             try
@@ -231,7 +234,7 @@ namespace WebRtcVoice
                     if (ret.CheckReturnCode("ack"))
                     {
                         // Some messages are asynchronous and completed with an event
-                        m_log.DebugFormat("{0} SendToJanus: ack response {1}", LogHeader, respStr);
+                        if (MessageDetails) m_log.DebugFormat("{0} SendToJanus: ack response {1}", LogHeader, respStr);
                         if (_OutstandingRequests.TryGetValue(pReq.TransactionId, out OutstandingRequest outstandingRequest))
                         {
                             ret = await outstandingRequest.TaskCompletionSource.Task;
@@ -243,7 +246,7 @@ namespace WebRtcVoice
                     {
                         // If the response is not an ack, that means a synchronous request/response so return the response
                         _OutstandingRequests.Remove(pReq.TransactionId);
-                        m_log.DebugFormat("{0} SendToJanus: response {1}", LogHeader, respStr);
+                        if (MessageDetails) m_log.DebugFormat("{0} SendToJanus: response {1}", LogHeader, respStr);
                     }
                 }
                 else

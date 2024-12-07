@@ -354,8 +354,8 @@ namespace WebRtcVoice
                     "janus info",
                     "Show Janus server information",
                     HandleJanusInfo);
-                MainConsole.Instance.Commands.AddCommand("Webrtc", false, "janus listrooms",
-                    "janus listrooms",
+                MainConsole.Instance.Commands.AddCommand("Webrtc", false, "janus list rooms",
+                    "janus list rooms",
                     "List the rooms on the Janus server",
                     HandleJanusListRooms);
                 // List rooms
@@ -394,6 +394,19 @@ namespace WebRtcVoice
                                 "  {0,10} {1,15} {2,5} {3,10} {4,7} {5,7}",
                                 room["room"], room["description"], room["num_participants"],
                                 room["sampling_rate"], room["spatial_audio"], room["record"]);
+                            var participantResp = await ab.SendAudioBridgeMsg(new AudioBridgeListParticipantsReq(room["room"].AsInteger()));
+                            if (participantResp is not null && participantResp.AudioBridgeReturnCode == "participants")
+                            {
+                                if (participantResp.PluginRespData.TryGetValue("participants", out OSD participants))
+                                {
+                                    foreach (OSDMap participant in participants as OSDArray)
+                                    {
+                                        MainConsole.Instance.Output("      {0}/{1},muted={2},talking={3},pos={4}",
+                                            participant["id"].AsLong(), participant["display"], participant["muted"],
+                                            participant["talking"], participant["spatial_position"]);
+                                    }
+                                }
+                            }
                         }
                     }
                     else

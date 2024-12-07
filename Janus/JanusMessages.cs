@@ -438,6 +438,15 @@ namespace WebRtcVoice
         {
         }
     }
+    public class AudioBridgeListParticipantsReq : PluginMsgReq
+    {
+        public AudioBridgeListParticipantsReq(int pRoom) : base(new OSDMap() {
+                                                { "request", "listparticipants" },
+                                                { "room", pRoom }
+                                            })  
+        {
+        }
+    }
     // ==============================================================
     // ==============================================================
     public class EventResp : JanusMessageResp
