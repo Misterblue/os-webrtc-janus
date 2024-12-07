@@ -410,11 +410,11 @@ namespace WebRtcVoice
                                         break;
                                     case "ack":
                                         // 'ack' says the request was received and an event will follow
-                                        m_log.DebugFormat("{0} EventLongPoll: ack {1}", LogHeader, resp.ToString());
+                                        if (MessageDetails) m_log.DebugFormat("{0} EventLongPoll: ack {1}", LogHeader, resp.ToString());
                                         break;
                                     case "success":
                                         // success is a sync response that says the request was completed
-                                        m_log.DebugFormat("{0} EventLongPoll: success {1}", LogHeader, resp.ToString());
+                                        if (MessageDetails) m_log.DebugFormat("{0} EventLongPoll: success {1}", LogHeader, resp.ToString());
                                         break;
                                     case "trickle":
                                         // got a trickle ICE candidate from Janus

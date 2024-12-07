@@ -55,6 +55,8 @@ namespace WebRtcVoice
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly string logHeader = "[REGION WEBRTC VOICE]";
 
+        private bool MessageDetail = false;
+
         // Control info
         private static bool m_Enabled = false;
 
@@ -211,8 +213,6 @@ namespace WebRtcVoice
                 return;
             }
 
-            m_log.DebugFormat("{0}[ProvisionVoice]: Request for {1}", logHeader, agentID.ToString());
-
             // Deserialize the request. Convert the LLSDXml to OSD for our use
             OSDMap map = null;
             using (Stream inputStream = request.InputStream)
@@ -220,7 +220,7 @@ namespace WebRtcVoice
                 if (inputStream.Length > 0)
                 {
                     OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
-                    m_log.DebugFormat("{0}[ProvisionVoice]: Request: {1}", logHeader, tmp.ToString());
+                    if (MessageDetail) m_log.DebugFormat("{0}[ProvisionVoice]: Request: {1}", logHeader, tmp.ToString());
 
                     if (tmp is OSDMap)
                     {
@@ -230,7 +230,7 @@ namespace WebRtcVoice
             }
             if (map is null)
             {
-                m_log.DebugFormat("{0}[ProvisionVoice]: No request data found. Agent={1}", logHeader, agentID.ToString());
+                m_log.ErrorFormat("{0}[ProvisionVoice]: No request data found. Agent={1}", logHeader, agentID.ToString());
                 response.StatusCode = (int)HttpStatusCode.NoContent;
                 return;
             }
@@ -258,9 +258,9 @@ namespace WebRtcVoice
             // The checks passed. Send the request to the voice service.
             OSDMap resp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene).Result;
 
-            m_log.DebugFormat("{0}[ProvisionVoice]: response: {1}", logHeader, resp.ToString());
+            if (MessageDetail) m_log.DebugFormat("{0}[ProvisionVoice]: response: {1}", logHeader, resp.ToString());
 
-            // TODO: check for erros and package the response
+            // TODO: check for errors and package the response
 
             // Convert the OSD to LLSDXml for the response
             string xmlResp = OSDParser.SerializeLLSDXmlString(resp);
@@ -274,12 +274,10 @@ namespace WebRtcVoice
         {
             if(request.HttpMethod != "POST")
             {
-                m_log.DebugFormat("[{0}][VoiceSignaling]: Not a POST request. Agent={1}", logHeader, agentID.ToString());
+                m_log.ErrorFormat("[{0}][VoiceSignaling]: Not a POST request. Agent={1}", logHeader, agentID.ToString());
                 response.StatusCode = (int)HttpStatusCode.NotFound;
                 return;
             }
-
-            m_log.DebugFormat("{0}[VoiceSignaling]: Request for {1}", logHeader, agentID.ToString());
 
             // Deserialize the request. Convert the LLSDXml to OSD for our use
             OSDMap map = null;
@@ -288,7 +286,7 @@ namespace WebRtcVoice
                 if (inputStream.Length > 0)
                 {
                     OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
-                    m_log.DebugFormat("{0}[VoiceSignaling]: Request: {1}", logHeader, tmp.ToString());
+                    if (MessageDetail) m_log.DebugFormat("{0}[VoiceSignaling]: Request: {1}", logHeader, tmp.ToString());
 
                     if (tmp is OSDMap)
                     {
@@ -298,7 +296,7 @@ namespace WebRtcVoice
             }
             if (map is null)
             {
-                m_log.DebugFormat("{0}[VoiceSignaling]: No request data found. Agent={1}", logHeader, agentID.ToString());
+                m_log.ErrorFormat("{0}[VoiceSignaling]: No request data found. Agent={1}", logHeader, agentID.ToString());
                 response.StatusCode = (int)HttpStatusCode.NoContent;
                 return;
             }
