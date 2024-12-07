@@ -96,11 +96,19 @@ namespace WebRtcVoice
                     }
 
                     m_log.DebugFormat("{0} Loading NonSpatialVoiceService from {1}", LogHeader, nonSpatialDllName);
-                    m_nonSpatialVoiceService = ServerUtils.LoadPlugin<IWebRtcVoiceService>(nonSpatialDllName, new object[] { m_Config });
-                    if (m_nonSpatialVoiceService is null)
+                    if (spatialDllName == nonSpatialDllName)
                     {
-                        m_log.ErrorFormat("{0} Could not load NonSpatialVoiceService from {1}", LogHeader, nonSpatialDllName);
-                        m_Enabled = false;
+                        m_log.DebugFormat("{0} NonSpatialVoiceService is same as SpatialVoiceService", LogHeader);
+                        m_nonSpatialVoiceService = m_spatialVoiceService;
+                    }
+                    else
+                    {
+                        m_nonSpatialVoiceService = ServerUtils.LoadPlugin<IWebRtcVoiceService>(nonSpatialDllName, new object[] { m_Config });
+                        if (m_nonSpatialVoiceService is null)
+                        {
+                            m_log.ErrorFormat("{0} Could not load NonSpatialVoiceService from {1}", LogHeader, nonSpatialDllName);
+                            m_Enabled = false;
+                        }
                     }
 
                     if (m_Enabled)
