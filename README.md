@@ -20,6 +20,6 @@ cd ..
 
 # Copy the INI file for webrtc into a config dir that is read at boot
 mkdir bin/config
-cp add-modules/os-webrtc-janus/os-webrtc-janus.ini bin/config
+cp addon-modules/os-webrtc-janus/os-webrtc-janus.ini bin/config
 ```
 
