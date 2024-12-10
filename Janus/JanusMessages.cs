@@ -93,9 +93,8 @@ namespace WebRtcVoice
         {
         }
 
-        public JanusMessageResp(string pJson) : base()
+        public JanusMessageResp(string pType) : base(pType)
         {
-            m_message = OSDParser.DeserializeJson(pJson) as OSDMap;
         }
 
         public JanusMessageResp(OSDMap pMap) : base()
@@ -105,7 +104,8 @@ namespace WebRtcVoice
 
         public static JanusMessageResp FromJson(string pJson)
         {
-            return new JanusMessageResp(pJson);
+            var newBody = OSDParser.DeserializeJson(pJson) as OSDMap;
+            return new JanusMessageResp(newBody);
         }
 
         // Check if a successful response code is in the response
@@ -123,15 +123,45 @@ namespace WebRtcVoice
             }
             return ret;
         } }
+    }
+
+    // ==============================================================
+    public class ErrorResp : JanusMessageResp
+    {
+        public ErrorResp() : base("error")
+        {
+        }
+
+        public ErrorResp(string pType) : base(pType)
+        {
+        }
+
+        public ErrorResp(JanusMessageResp pResp) : base(pResp.RawBody)
+        {
+        }
+
+        public void SetError(int pCode, string pReason)
+        {
+            m_message["error"] = new OSDMap()
+            {
+                { "code", pCode },
+                { "reason", pReason }
+            };
+        }
+
+        public void AddSessionId(string pSessionId)
+        {
+            m_message["session_id"] = long.Parse(pSessionId);
+        }
 
         // Dig through the response to get the error code and reason
-        public string errorCode { get {
-            string ret = String.Empty;
+        public int errorCode { get {
+            int ret = 0;
             if (m_message.ContainsKey("error"))
             {
                 var err = m_message["error"];
                 if (err is OSDMap)
-                    ret = (err as OSDMap)["code"];
+                    ret = (int)(err as OSDMap)["code"].AsLong();
             }
             return ret;
         }}
@@ -148,7 +178,6 @@ namespace WebRtcVoice
             return ret;
         }}
     }
-
     // ==============================================================
     public class CreateSessionReq : JanusMessageReq
     {
@@ -448,10 +477,13 @@ namespace WebRtcVoice
         }
     }
     // ==============================================================
-    // ==============================================================
     public class EventResp : JanusMessageResp
     {
         public EventResp() : base()
+        {
+        }
+
+        public EventResp(string pType) : base(pType)
         {
         }
 
@@ -461,9 +493,11 @@ namespace WebRtcVoice
 
         public string sessionId { 
             get { return m_message.ContainsKey("session_id") ? m_message["session_id"].AsLong().ToString() : String.Empty; }
+            set { m_message["session_id"] = long.Parse(value); }
         }
         public string sender {
             get { return m_message.ContainsKey("sender") ? m_message["sender"] : String.Empty; }
         }
     }
+    // ==============================================================
 }

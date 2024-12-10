@@ -106,8 +106,9 @@ namespace WebRtcVoice
             if (await janusSession.CreateSession())
             {
                 _log.DebugFormat("{0} JanusSession created", LogHeader);
-                // Once the session is created, create a handle to the plugin for rooms
+                janusSession.OnDisconnect += Handle_Hangup;
 
+                // Once the session is created, create a handle to the plugin for rooms
                 JanusAudioBridge audioBridge = new JanusAudioBridge(janusSession);
                 janusSession.AddPlugin(audioBridge);
 

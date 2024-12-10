@@ -20,6 +20,7 @@ using System.Threading.Tasks;
 using OpenMetaverse.StructuredData;
 
 using log4net;
+using log4net.Core;
 
 namespace WebRtcVoice
 {
@@ -257,7 +258,7 @@ namespace WebRtcVoice
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat("{0} SendToJanus: exception {1}", LogHeader, e);
+                m_log.ErrorFormat("{0} SendToJanus: exception {1}", LogHeader, e.Message);
             }
 
             return ret;
@@ -284,7 +285,7 @@ namespace WebRtcVoice
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat("{0} SendToJanusNoWait: exception {1}", LogHeader, e);
+                m_log.ErrorFormat("{0} SendToJanusNoWait: exception {1}", LogHeader, e.Message);
             }
             return ret;
 
@@ -317,6 +318,12 @@ namespace WebRtcVoice
         {
             return GetFromJanus(_JanusServerURI);
         }
+        /// <summary>
+        /// Do a GET to the Janus server and return the response.
+        /// If the response is an HTTP error, we return fake JanusMessageResp with the error.
+        /// </summary>
+        /// <param name="pURI"></param>
+        /// <returns></returns>
         public async Task<JanusMessageResp> GetFromJanus(string pURI)
         {
             if (!String.IsNullOrEmpty(_JanusAPIToken))
@@ -330,9 +337,18 @@ namespace WebRtcVoice
                 // m_log.DebugFormat("{0} GetFromJanus: URI = \"{1}\"", LogHeader, pURI);
                 HttpRequestMessage reqMsg = new HttpRequestMessage(HttpMethod.Get, pURI);
                 reqMsg.Headers.Add("Accept", "application/json");
-                HttpResponseMessage response = await _HttpClient.SendAsync(reqMsg);
+                HttpResponseMessage response = null;
+                try
+                {
+                    response = await _HttpClient.SendAsync(reqMsg);
+                }
+                catch (Exception e)
+                {
+                    m_log.ErrorFormat("{0} GetFromJanus: exception {1}", LogHeader, e.Message);
+                    response = null;
+                }
 
-                if (response.IsSuccessStatusCode)
+                if (response is not null && response.IsSuccessStatusCode)
                 {
                     string respStr = await response.Content.ReadAsStringAsync();
                     ret = JanusMessageResp.FromJson(respStr);
@@ -341,6 +357,19 @@ namespace WebRtcVoice
                 else
                 {
                     m_log.ErrorFormat("{0} GetFromJanus: response not successful {1}", LogHeader, response);
+                    var eResp = new ErrorResp("GETERROR");
+                    // Add the sessionId so the proper session can be shut down
+                    eResp.AddSessionId(SessionId);
+                    if (response is not null)
+                    {
+                        eResp.SetError((int)response.StatusCode, response.ReasonPhrase);
+                    }
+                    else
+                    {
+                        eResp.SetError(0, "Connection refused");
+                    }
+                    ret = eResp;
+
                 }
             }
             catch (Exception e)
@@ -365,6 +394,7 @@ namespace WebRtcVoice
         public event JanusEventHandler OnEvent;
         public event JanusEventHandler OnJoined;
         public event JanusEventHandler OnLeaving;
+        public event JanusEventHandler OnDisconnect;
         #pragma warning restore CS0067,CS0414
         public void ClearEventSubscriptions()
         {
@@ -377,6 +407,7 @@ namespace WebRtcVoice
             OnEvent = null;
             OnJoined = null;
             OnLeaving = null;
+            OnDisconnect = null;
         }
         // ====================================================================
         /// <summary>
@@ -386,9 +417,11 @@ namespace WebRtcVoice
         /// </summary>
         private void StartLongPoll()
         {
+            bool running = true;
+
             m_log.DebugFormat("{0} EventLongPoll", LogHeader);
             Task.Run(async () => {
-                while (IsConnected)
+                while (running && IsConnected)
                 {
                     try
                     {
@@ -425,8 +458,6 @@ namespace WebRtcVoice
                                     case "webrtcup":
                                         //  ICE and DTLS succeeded, and so Janus correctly established a PeerConnection with the user/application;
                                         m_log.DebugFormat("{0} EventLongPoll: webrtcup {1}", LogHeader, resp.ToString());
-                                        // TODO: if (TryGetPluginHandle(resp, out pluginHandle))
-                                        // TODO: pluginHandle.webrtcState(true);
                                         break;
                                     case "hangup":
                                         // The PeerConnection was closed, either by the user/application or by Janus itself;
@@ -441,14 +472,10 @@ namespace WebRtcVoice
                                     case "media":
                                         // Janus is receiving (receiving: true/false) audio/video (type: "audio/video") on this PeerConnection;
                                         m_log.DebugFormat("{0} EventLongPoll: media {1}", LogHeader, resp.ToString());
-                                        // TODO: if (TryGetPluginHandle(resp, out pluginHandle))
-                                        // TODO: pluginHandle.mediaState(resp.type, resp.receiving, resp.mid);
                                         break;
                                     case "slowlink":
                                         // Janus detected a slowlink (uplink: true/false) on this PeerConnection;
                                         m_log.DebugFormat("{0} EventLongPoll: slowlink {1}", LogHeader, resp.ToString());
-                                        // TODO: if (TryGetPluginHandle(resp, out pluginHandle))
-                                        // TODO: pluginHandle.mediaState(resp.uplink, resp.lost, resp.mid);
                                         break;
                                     case "error":
                                         m_log.DebugFormat("{0} EventLongPoll: error {1}", LogHeader, resp.ToString());
@@ -488,6 +515,26 @@ namespace WebRtcVoice
                                         OnLeaving?.Invoke(eventResp);
                                         m_log.DebugFormat("{0} EventLongPoll: leaving {1}", LogHeader, resp.ToString());
                                         break;
+                                    case "GETERROR":
+                                        // Special error response from the GET
+                                        var errorResp = new ErrorResp(resp);
+                                        switch (errorResp.errorCode)
+                                        {
+                                            case 404:
+                                                // "Not found" means there is a Janus server but the session is gone
+                                                m_log.ErrorFormat("{0} EventLongPoll: GETERROR {1}", LogHeader, resp.ToString());
+                                                OnDisconnect?.Invoke(eventResp);
+                                                // This will cause the long poll to exit
+                                                running = false;
+                                                break;
+                                            default:
+                                                m_log.DebugFormat("{0} EventLongPoll: unknown response {1}", LogHeader, resp.ToString());
+                                                OnDisconnect?.Invoke(eventResp);
+                                                // This will cause the long poll to exit
+                                                running = false;
+                                                break;
+                                        }   
+                                        break;
                                     default:
                                         m_log.DebugFormat("{0} EventLongPoll: unknown response {1}", LogHeader, resp.ToString());
                                         break;
@@ -496,11 +543,13 @@ namespace WebRtcVoice
                         }
                         else
                         {
-                            m_log.ErrorFormat("{0} EventLongPoll: failed {1}", LogHeader, resp.ToString());
+                            m_log.ErrorFormat("{0} EventLongPoll: failed. Response is null", LogHeader);
                         }
                     }
                     catch (Exception e)
                     {
+                        // This will cause the long poll to exit
+                        running = false;
                         m_log.ErrorFormat("{0} EventLongPoll: exception {1}", LogHeader, e);
                     }
                 }
