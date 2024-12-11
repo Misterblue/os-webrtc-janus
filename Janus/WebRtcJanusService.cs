@@ -386,6 +386,7 @@ namespace WebRtcVoice
                 {
                     if (resp.PluginRespData.TryGetValue("list", out OSD list))
                     {
+                        MainConsole.Instance.Output("");
                         MainConsole.Instance.Output(
                             "  {0,10} {1,15} {2,5} {3,10} {4,7} {5,7}",
                             "Room", "Description", "Num", "SampleRate", "Spatial", "Recording");

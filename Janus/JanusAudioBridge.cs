@@ -169,7 +169,7 @@ namespace WebRtcVoice
             }
 
             // The room doesn't exist. Create it.
-            string roomDesc = pRegionId + " " + pChannelType + " " + pParcelLocalID + " " + pChannelID;
+            string roomDesc = pRegionId + "/" + pChannelType + "/" + pParcelLocalID + "/" + pChannelID;
             JanusRoom ret = await CreateRoom(roomNumber, pSpatial, roomDesc);
 
             JanusRoom existingRoom = null;
