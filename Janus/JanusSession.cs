@@ -453,7 +453,7 @@ namespace WebRtcVoice
                                     case "trickle":
                                         // got a trickle ICE candidate from Janus
                                         // this is for reverse communication from Janus to the client and we don't do that
-                                        m_log.DebugFormat("{0} EventLongPoll: trickle {1}", LogHeader, resp.ToString());
+                                        if (_MessageDetails) m_log.DebugFormat("{0} EventLongPoll: trickle {1}", LogHeader, resp.ToString());
                                         OnTrickle?.Invoke(eventResp);
                                         break;
                                     case "webrtcup":
@@ -491,7 +491,7 @@ namespace WebRtcVoice
                                         }
                                         break;
                                     case "event":
-                                        m_log.DebugFormat("{0} EventLongPoll: event {1}", LogHeader, resp.ToString());
+                                        if (_MessageDetails) m_log.DebugFormat("{0} EventLongPoll: event {1}", LogHeader, resp.ToString());
                                         if (TryGetOutstandingRequest(resp.TransactionId, out OutstandingRequest outstandingRequest2))
                                         {
                                             // Someone is waiting for this event
