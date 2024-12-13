@@ -55,7 +55,7 @@ namespace WebRtcVoice
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
         private static readonly string logHeader = "[REGION WEBRTC VOICE]";
 
-        private bool MessageDetail = false;
+        private bool _MessageDetails = false;
 
         // Control info
         private static bool m_Enabled = false;
@@ -74,6 +74,8 @@ namespace WebRtcVoice
 
             m_Enabled = m_Config.GetBoolean("Enabled", false);
             if (!m_Enabled) return;
+
+            _MessageDetails = m_Config.GetBoolean("MessageDetails", false);
 
             try
             {
@@ -220,7 +222,7 @@ namespace WebRtcVoice
                 if (inputStream.Length > 0)
                 {
                     OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
-                    if (MessageDetail) m_log.DebugFormat("{0}[ProvisionVoice]: Request: {1}", logHeader, tmp.ToString());
+                    if (_MessageDetails) m_log.DebugFormat("{0}[ProvisionVoice]: Request: {1}", logHeader, tmp.ToString());
 
                     if (tmp is OSDMap)
                     {
@@ -258,7 +260,7 @@ namespace WebRtcVoice
             // The checks passed. Send the request to the voice service.
             OSDMap resp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene).Result;
 
-            if (MessageDetail) m_log.DebugFormat("{0}[ProvisionVoice]: response: {1}", logHeader, resp.ToString());
+            if (_MessageDetails) m_log.DebugFormat("{0}[ProvisionVoice]: response: {1}", logHeader, resp.ToString());
 
             // TODO: check for errors and package the response
 
@@ -286,7 +288,7 @@ namespace WebRtcVoice
                 if (inputStream.Length > 0)
                 {
                     OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
-                    if (MessageDetail) m_log.DebugFormat("{0}[VoiceSignaling]: Request: {1}", logHeader, tmp.ToString());
+                    if (_MessageDetails) m_log.DebugFormat("{0}[VoiceSignaling]: Request: {1}", logHeader, tmp.ToString());
 
                     if (tmp is OSDMap)
                     {

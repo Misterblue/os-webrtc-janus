@@ -5,7 +5,7 @@ Addon-module for OpenSimulator to provide webrtc voice using Janus-gateway.
 ```
 # Get the OpenSimulator sources
 git clone git://opensimulator.org/git/opensim
-cd opensim
+cd opensim     # cd into the top level OpenSim directory
 
 # Fetch the WebRtc addon
 cd addon-modules

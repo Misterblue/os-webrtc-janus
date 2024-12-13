@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-<Version>1.0.7</Version>
+<Version>1.0.13</Version>
     <PreserveCompilationContext>false</PreserveCompilationContext>
     <OutputType>Library</OutputType>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -28,7 +28,7 @@
     <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
     <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
     <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
-<Version>1.0.7</Version>
+<Version>1.0.13</Version>
     <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
     <OutputPath>../../../bin/</OutputPath>
     <RegisterForComInterop>False</RegisterForComInterop>
@@ -52,7 +52,7 @@
     <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
     <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
     <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
-<Version>1.0.7</Version>
+<Version>1.0.13</Version>
     <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
     <OutputPath>../../../bin/</OutputPath>
     <RegisterForComInterop>False</RegisterForComInterop>

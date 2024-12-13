@@ -31,7 +31,7 @@ namespace WebRtcVoice
         private static readonly string LogHeader = "[JANUS SESSION]";
 
         // Set to 'true' to get the messages send and received from Janus
-        private bool MessageDetails = false;
+        private bool _MessageDetails = false;
 
         private string _JanusServerURI = String.Empty;
         private string _JanusAPIToken = String.Empty;
@@ -49,13 +49,14 @@ namespace WebRtcVoice
         public bool IsConnected => !String.IsNullOrEmpty(SessionId);
 
         // Wrapper around the session connection to Janus-gateway
-        public JanusSession(string pServerURI, string pAPIToken, string pAdminURI, string pAdminToken)
+        public JanusSession(string pServerURI, string pAPIToken, string pAdminURI, string pAdminToken, bool pDebugMessages = false)
         {
             m_log.DebugFormat("{0} JanusSession constructor", LogHeader);
             _JanusServerURI = pServerURI;
             _JanusAPIToken = pAPIToken;
             _JanusAdminURI = pAdminURI;
             _JanusAdminToken = pAdminToken;
+            _MessageDetails = pDebugMessages;
         }
 
         public void Dispose()
@@ -209,7 +210,7 @@ namespace WebRtcVoice
                 pReq.TransactionId = Guid.NewGuid().ToString();
             }
             // m_log.DebugFormat("{0} SendToJanus", LogHeader);
-            if (MessageDetails) m_log.DebugFormat("{0} SendToJanus. URI={1}, req={2}", LogHeader, pURI, pReq.ToJson());
+            if (_MessageDetails) m_log.DebugFormat("{0} SendToJanus. URI={1}, req={2}", LogHeader, pURI, pReq.ToJson());
 
             JanusMessageResp ret = null;
             try
@@ -235,7 +236,7 @@ namespace WebRtcVoice
                     if (ret.CheckReturnCode("ack"))
                     {
                         // Some messages are asynchronous and completed with an event
-                        if (MessageDetails) m_log.DebugFormat("{0} SendToJanus: ack response {1}", LogHeader, respStr);
+                        if (_MessageDetails) m_log.DebugFormat("{0} SendToJanus: ack response {1}", LogHeader, respStr);
                         if (_OutstandingRequests.TryGetValue(pReq.TransactionId, out OutstandingRequest outstandingRequest))
                         {
                             ret = await outstandingRequest.TaskCompletionSource.Task;
@@ -247,7 +248,7 @@ namespace WebRtcVoice
                     {
                         // If the response is not an ack, that means a synchronous request/response so return the response
                         _OutstandingRequests.Remove(pReq.TransactionId);
-                        if (MessageDetails) m_log.DebugFormat("{0} SendToJanus: response {1}", LogHeader, respStr);
+                        if (_MessageDetails) m_log.DebugFormat("{0} SendToJanus: response {1}", LogHeader, respStr);
                     }
                 }
                 else
@@ -443,11 +444,11 @@ namespace WebRtcVoice
                                         break;
                                     case "ack":
                                         // 'ack' says the request was received and an event will follow
-                                        if (MessageDetails) m_log.DebugFormat("{0} EventLongPoll: ack {1}", LogHeader, resp.ToString());
+                                        if (_MessageDetails) m_log.DebugFormat("{0} EventLongPoll: ack {1}", LogHeader, resp.ToString());
                                         break;
                                     case "success":
                                         // success is a sync response that says the request was completed
-                                        if (MessageDetails) m_log.DebugFormat("{0} EventLongPoll: success {1}", LogHeader, resp.ToString());
+                                        if (_MessageDetails) m_log.DebugFormat("{0} EventLongPoll: success {1}", LogHeader, resp.ToString());
                                         break;
                                     case "trickle":
                                         // got a trickle ICE candidate from Janus

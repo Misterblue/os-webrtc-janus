@@ -38,6 +38,8 @@ namespace WebRtcVoice
         private string _JanusAdminURI = String.Empty;
         private string _JanusAdminToken = String.Empty;
 
+        private bool _MessageDetails = false;
+
         // An extra "viewer session" that is created initially. Used to verify the service
         //     is working and for a handle for the console commands.
         private JanusViewerSession _ViewerSession;
@@ -58,6 +60,8 @@ namespace WebRtcVoice
                     _JanusAPIToken = janusConfig.GetString("APIToken", String.Empty);
                     _JanusAdminURI = janusConfig.GetString("JanusGatewayAdminURI", String.Empty);
                     _JanusAdminToken = janusConfig.GetString("AdminAPIToken", String.Empty);
+                    // Debugging options
+                    _MessageDetails = janusConfig.GetBoolean("MessageDetails", false);
 
                     if (String.IsNullOrEmpty(_JanusServerURI) || String.IsNullOrEmpty(_JanusAPIToken) ||
                         String.IsNullOrEmpty(_JanusAdminURI) || String.IsNullOrEmpty(_JanusAdminToken))
@@ -102,7 +106,7 @@ namespace WebRtcVoice
 
         private async Task ConnectToSessionAndAudioBridge(JanusViewerSession pViewerSession)
         {
-            JanusSession janusSession = new JanusSession(_JanusServerURI, _JanusAPIToken, _JanusAdminURI, _JanusAdminToken);
+            JanusSession janusSession = new JanusSession(_JanusServerURI, _JanusAPIToken, _JanusAdminURI, _JanusAdminToken, _MessageDetails);
             if (await janusSession.CreateSession())
             {
                 _log.DebugFormat("{0} JanusSession created", LogHeader);
@@ -192,7 +196,7 @@ namespace WebRtcVoice
 
                 // Get the parameters that select the room
                 // To get here, voice_server_type has already been checked to be 'webrtc' and channel_type='local'
-                int parcel_local_id = pRequest.ContainsKey("parcel_id") ? pRequest["parcel_id"].AsInteger() : JanusAudioBridge.REGION_ROOM_ID;
+                int parcel_local_id = pRequest.ContainsKey("parcel_local_id") ? pRequest["parcel_local_id"].AsInteger() : JanusAudioBridge.REGION_ROOM_ID;
                 string channel_id = pRequest.ContainsKey("channel_id") ? pRequest["channel_id"].AsString() : String.Empty;
                 string channel_credentials = pRequest.ContainsKey("credentials") ? pRequest["credentials"].AsString() : String.Empty;
                 string channel_type = pRequest["channel_type"].AsString();
