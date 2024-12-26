@@ -11,7 +11,8 @@
 // limitations under the License.
 
 using System.Threading.Tasks;
-using OpenMetaverse;
+
+using OMV = OpenMetaverse;
 
 namespace WebRtcVoice
 {
@@ -23,10 +24,10 @@ namespace WebRtcVoice
         // THis ID is passed between us and the voice service to idetify the session
         public string VoiceServiceSessionId { get; set; }
         // The UUID of the region that is being connected to
-        public UUID RegionId { get; set; }
+        public OMV.UUID RegionId { get; set; }
 
         // The simulator has a GUID to identify the user
-        public UUID AgentId { get; set; }
+        public OMV.UUID AgentId { get; set; }
 
         // Disconnect the connection to the voice service for this session
         public Task Shutdown();
