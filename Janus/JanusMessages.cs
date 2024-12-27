@@ -17,6 +17,7 @@ using OpenMetaverse.StructuredData;
 using OpenMetaverse;
 
 using log4net;
+using System.Collections.Generic;
 
 namespace WebRtcVoice
 {
@@ -345,6 +346,15 @@ namespace WebRtcVoice
 
         public OSDMap PluginRespData { get { return m_data; } }
 
+        public bool PluginRespDataBool(string pKey)
+        {
+            bool ret = false;
+            if (m_data is not null && m_data.ContainsKey(pKey))
+            {
+                ret = m_data[pKey].AsBoolean();
+            }
+            return ret;
+        }
         public int PluginRespDataInt(string pKey)
         {
             int ret = 0;
@@ -360,6 +370,25 @@ namespace WebRtcVoice
             if (m_data is not null && m_data.ContainsKey(pKey))
             {
                 ret = m_data[pKey].AsString();
+            }
+            return ret;
+        }
+        public List<Dictionary<string, string>> PluginRespDataList(string pKey)
+        {
+            List<Dictionary<string, string>> ret = new List<Dictionary<string, string>>();
+            if (m_data is not null && m_data.ContainsKey(pKey))
+            {
+                var list = m_data[pKey] as OSDArray;
+                foreach (var item in list)
+                {
+                    var itemMap = item as OSDMap;
+                    Dictionary<string, string> itemDict = new Dictionary<string, string>();
+                    foreach (var key in itemMap.Keys)
+                    {
+                        itemDict[key] = itemMap[key].AsString();
+                    }
+                    ret.Add(itemDict);
+                }
             }
             return ret;
         }
@@ -475,6 +504,54 @@ namespace WebRtcVoice
                                             })  
         {
         }
+    }
+    public class AudioBridgeListParticipantsResp : AudioBridgeResp
+    {
+        public AudioBridgeListParticipantsResp(JanusMessageResp pResp) : base(pResp)
+        {
+        }
+        public List<Dictionary<string, string>> Participants { get { return PluginRespDataList("participants"); } }
+    }
+    // ==============================================================
+    //Playback of OPUS files
+    public class AudioBridgePlayFileReq: PluginMsgReq
+    {
+        public AudioBridgePlayFileReq(int pRoom, string filename, bool loop) : base(new OSDMap() {
+                                            { "request", "play_file"},
+                                            { "room", pRoom },
+                                            { "filename", filename },
+                                            { "loop", loop },
+                                            { "file_id", filename.GetHashCode().ToString() }
+                                            })
+        {            
+        }
+    }
+    public class AudioBridgeStopFileReq: PluginMsgReq
+    {
+        public AudioBridgeStopFileReq(int pRoom, string filename) : base(new OSDMap() {
+                                            { "request", "stop_file"},
+                                            { "room", pRoom },
+                                            { "file_id", filename.GetHashCode().ToString() }
+                                            })
+        {            
+        }
+    }
+    public class AudioBridgeIsPlayingFileReq: PluginMsgReq
+    {
+        public AudioBridgeIsPlayingFileReq(int pRoom, string filename) : base(new OSDMap() {
+                                            { "request", "is_playing"},
+                                            { "room", pRoom },
+                                            { "file_id", filename.GetHashCode().ToString() }
+                                            })
+        {            
+        }
+    }
+    public class AudioBridgeIsPlayingFileResp : AudioBridgeResp
+    {
+        public AudioBridgeIsPlayingFileResp(JanusMessageResp pResp) : base(pResp)
+        {
+        }
+        public bool IsPlaying { get { return PluginRespDataBool("playing"); } }
     }
     // ==============================================================
     public class EventResp : JanusMessageResp
