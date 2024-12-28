@@ -123,17 +123,6 @@ namespace WebRtcVoice
     //    a successful response. Could be
     //      "event": for an event message (See JanusEventResp)
     //      "keepalive": for a keepalive event
-    // Janus message response is a basic Janus message with the response data
-    // {
-    //    "janus": "success",
-    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea", // ID of the requesting message
-    //    "data": { ... }  // the response data
-    //    "error": { "code": 123, "reason": "..." }  // if there was an error
-    // }
-    // The "janus" return code changes depending on the request. The above is for
-    //    a successful response. Could be
-    //      "event": for an event message (See JanusEventResp)
-    //      "keepalive": for a keepalive event
     public class JanusMessageResp : JanusMessage
     {
         public JanusMessageResp() : base()
@@ -176,12 +165,6 @@ namespace WebRtcVoice
     }
 
     // ==============================================================
-    // An error response is a Janus response with an error code and reason.
-    // {
-    //    "janus": "error",
-    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea", // ID of the requesting message
-    //    "error": { "code": 123, "reason": "..." }  // if there was an error
-    // }
     // An error response is a Janus response with an error code and reason.
     // {
     //    "janus": "error",
@@ -339,19 +322,19 @@ namespace WebRtcVoice
         {
             m_body = pBody;
         }
-        public void AddStringToBodyToBody(string pKey, string pValue)
+        public void AddStringToBody(string pKey, string pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddIntToBodyToBody(string pKey, int pValue)
+        public void AddIntToBody(string pKey, int pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddBoolToBodyToBody(string pKey, bool pValue)
+        public void AddBoolToBody(string pKey, bool pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddOSDToBodyToBody(string pKey, OSD pValue)
+        public void AddOSDToBody(string pKey, OSD pValue)
         {
             m_body[pKey] = pValue;
         }
@@ -479,7 +462,7 @@ namespace WebRtcVoice
                                             })  
         {
             if (!String.IsNullOrEmpty(pDesc))
-            AddStringToBodyToBody("description", pDesc);
+            AddStringToBody("description", pDesc);
         }
     }
     // ==============================================================
