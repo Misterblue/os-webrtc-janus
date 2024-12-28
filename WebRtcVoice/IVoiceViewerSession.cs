@@ -11,7 +11,8 @@
 // limitations under the License.
 
 using System.Threading.Tasks;
-using OpenMetaverse;
+
+using OMV = OpenMetaverse;
 
 using OMV = OpenMetaverse;
 

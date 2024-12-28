@@ -231,6 +231,6 @@ namespace WebRtcVoice
                 m_log.DebugFormat("{0} Handle_Event. {1}", LogHeader, abResp.ToString());
             }
 
-        }  
+        }
     }
 }

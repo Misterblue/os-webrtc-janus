@@ -168,7 +168,7 @@ namespace WebRtcVoice
                     _ = pViewerSession.Shutdown();
                 });
             }
-        }
+        }   
 
         // The pRequest parameter is a straight conversion of the JSON request from the client.
         // This is the logic that takes the client's request and converts it into
@@ -264,7 +264,8 @@ namespace WebRtcVoice
             else
             {
                 errorMsg = "viewersession not JanusViewerSession";
-                _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: viewersession not JanusViewerSession", LogHeader);            }
+                _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: viewersession not JanusViewerSession", LogHeader);
+            }
 
             if (!String.IsNullOrEmpty(errorMsg) && ret is null)
             {

@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 
 using OMV = OpenMetaverse;
 using OpenMetaverse.StructuredData;
-using OpenMetaverse;
+
 using log4net;
 
 namespace WebRtcVoice

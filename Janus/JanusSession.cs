@@ -46,7 +46,7 @@ namespace WebRtcVoice
 
         private HttpClient _HttpClient = new HttpClient();
 
-         public bool IsConnected { get; set; }
+        public bool IsConnected { get; set; }
 
         // Wrapper around the session connection to Janus-gateway
         public JanusSession(string pServerURI, string pAPIToken, string pAdminURI, string pAdminToken, bool pDebugMessages = false)

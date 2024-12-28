@@ -123,6 +123,17 @@ namespace WebRtcVoice
     //    a successful response. Could be
     //      "event": for an event message (See JanusEventResp)
     //      "keepalive": for a keepalive event
+    // Janus message response is a basic Janus message with the response data
+    // {
+    //    "janus": "success",
+    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea", // ID of the requesting message
+    //    "data": { ... }  // the response data
+    //    "error": { "code": 123, "reason": "..." }  // if there was an error
+    // }
+    // The "janus" return code changes depending on the request. The above is for
+    //    a successful response. Could be
+    //      "event": for an event message (See JanusEventResp)
+    //      "keepalive": for a keepalive event
     public class JanusMessageResp : JanusMessage
     {
         public JanusMessageResp() : base()
@@ -145,7 +156,7 @@ namespace WebRtcVoice
         }
 
         // Return the "data" portion of the response as an OSDMap or null if there is none
-        public OSDMap dataSection { get { return m_message.ContainsKey("data") ? (m_message["data"] as OSDMap) : null; } }        
+        public OSDMap dataSection { get { return m_message.ContainsKey("data") ? (m_message["data"] as OSDMap) : null; } }
 
         // Check if a successful response code is in the response
         public virtual bool isSuccess { get { return CheckReturnCode("success"); } }
@@ -165,6 +176,12 @@ namespace WebRtcVoice
     }
 
     // ==============================================================
+    // An error response is a Janus response with an error code and reason.
+    // {
+    //    "janus": "error",
+    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea", // ID of the requesting message
+    //    "error": { "code": 123, "reason": "..." }  // if there was an error
+    // }
     // An error response is a Janus response with an error code and reason.
     // {
     //    "janus": "error",
@@ -237,7 +254,7 @@ namespace WebRtcVoice
             // If one just does a "ToString()" on the OSD object, you
             //    get an interpretation of the binary value.
             return dataSection.ContainsKey("id") ? dataSection["id"].AsLong().ToString() : String.Empty;
-        }}   
+        }}  
     }
     // ==============================================================
     public class DestroySessionReq : JanusMessageReq
@@ -281,7 +298,7 @@ namespace WebRtcVoice
         public AttachPluginResp(JanusMessageResp pResp) : base(pResp.RawBody)
         { }
         public string pluginId { get {
-             return dataSection.ContainsKey("id") ? dataSection["id"].AsLong().ToString() : String.Empty;
+            return dataSection.ContainsKey("id") ? dataSection["id"].AsLong().ToString() : String.Empty;
         }}
     }
     // ==============================================================
@@ -316,24 +333,25 @@ namespace WebRtcVoice
     public class PluginMsgReq : JanusMessageReq
     {
         private OSDMap m_body = new OSDMap();
+        
         // Note that the passed OSDMap is placed in the "body" section of the message
         public PluginMsgReq(OSDMap pBody) : base("message")
         {
             m_body = pBody;
         }
-        public void AddStringToBody(string pKey, string pValue)
+        public void AddStringToBodyToBody(string pKey, string pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddIntToBody(string pKey, int pValue)
+        public void AddIntToBodyToBody(string pKey, int pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddBoolToBody(string pKey, bool pValue)
+        public void AddBoolToBodyToBody(string pKey, bool pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddOSDToBody(string pKey, OSD pValue)
+        public void AddOSDToBodyToBody(string pKey, OSD pValue)
         {
             m_body[pKey] = pValue;
         }
@@ -378,17 +396,8 @@ namespace WebRtcVoice
 
         public OSDMap PluginRespData { get { return m_data; } }
 
-        public bool PluginRespDataBool(string pKey)
-        {
-            bool ret = false;
-            if (m_data is not null && m_data.ContainsKey(pKey))
-            {
-                ret = m_data[pKey].AsBoolean();
-            }
-            return ret;
-        }
         // Get an integer value for a key in the response data or zero if not there
-        public int PluginRespDataInt(string pKey)
+        public bool PluginRespDataBool(string pKey)
         {
             return m_data.ContainsKey(pKey) ? (int)m_data[pKey].AsLong() : 0;
         }
@@ -396,26 +405,6 @@ namespace WebRtcVoice
         public string PluginRespDataString(string pKey)
         {
             return m_data.ContainsKey(pKey) ? m_data[pKey].AsString() : String.Empty;
-        }
-        // Get a list of dictionaries from the response data
-        public List<Dictionary<string, string>> PluginRespDataList(string pKey)
-        {
-            List<Dictionary<string, string>> ret = new List<Dictionary<string, string>>();
-            if (m_data is not null && m_data.ContainsKey(pKey))
-            {
-                var list = m_data[pKey] as OSDArray;
-                foreach (var item in list)
-                {
-                    var itemMap = item as OSDMap;
-                    Dictionary<string, string> itemDict = new Dictionary<string, string>();
-                    foreach (var key in itemMap.Keys)
-                    {
-                        itemDict[key] = itemMap[key].AsString();
-                    }
-                    ret.Add(itemDict);
-                }
-            }
-            return ret;
         }
     }
     // ==============================================================
@@ -465,7 +454,7 @@ namespace WebRtcVoice
                                             })  
         {
             if (!String.IsNullOrEmpty(pDesc))
-            AddStringToBody("description", pDesc);
+            AddStringToBodyToBody("description", pDesc);
         }
     }
     // ==============================================================
@@ -490,7 +479,6 @@ namespace WebRtcVoice
         {
         }
     }
-    // ==============================================================
     // A successful response contains the participant ID and the SDP
     public class AudioBridgeJoinRoomResp : AudioBridgeResp
     {
@@ -509,7 +497,6 @@ namespace WebRtcVoice
         {
         }
     }
-    // ==============================================================
     public class AudioBridgeConfigRoomResp : AudioBridgeResp
     {
         // TODO:
@@ -594,6 +581,13 @@ namespace WebRtcVoice
         {
         }
         public bool IsPlaying { get { return PluginRespDataBool("playing"); } }
+    }
+    // ==============================================================
+    public class AudioBridgeEvent : AudioBridgeResp
+    {
+        public AudioBridgeEvent(JanusMessageResp pResp) : base(pResp)
+        {
+        }
     }
     // ==============================================================
     public class AudioBridgeEvent : AudioBridgeResp
