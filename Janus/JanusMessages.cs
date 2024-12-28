@@ -17,6 +17,7 @@ using OpenMetaverse.StructuredData;
 using OpenMetaverse;
 
 using log4net;
+using System.Collections.Generic;
 
 namespace WebRtcVoice
 {
@@ -122,6 +123,17 @@ namespace WebRtcVoice
     //    a successful response. Could be
     //      "event": for an event message (See JanusEventResp)
     //      "keepalive": for a keepalive event
+    // Janus message response is a basic Janus message with the response data
+    // {
+    //    "janus": "success",
+    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea", // ID of the requesting message
+    //    "data": { ... }  // the response data
+    //    "error": { "code": 123, "reason": "..." }  // if there was an error
+    // }
+    // The "janus" return code changes depending on the request. The above is for
+    //    a successful response. Could be
+    //      "event": for an event message (See JanusEventResp)
+    //      "keepalive": for a keepalive event
     public class JanusMessageResp : JanusMessage
     {
         public JanusMessageResp() : base()
@@ -164,6 +176,12 @@ namespace WebRtcVoice
     }
 
     // ==============================================================
+    // An error response is a Janus response with an error code and reason.
+    // {
+    //    "janus": "error",
+    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea", // ID of the requesting message
+    //    "error": { "code": 123, "reason": "..." }  // if there was an error
+    // }
     // An error response is a Janus response with an error code and reason.
     // {
     //    "janus": "error",
@@ -321,19 +339,19 @@ namespace WebRtcVoice
         {
             m_body = pBody;
         }
-        public void AddStringToBody(string pKey, string pValue)
+        public void AddStringToBodyToBody(string pKey, string pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddIntToBody(string pKey, int pValue)
+        public void AddIntToBodyToBody(string pKey, int pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddBoolToBody(string pKey, bool pValue)
+        public void AddBoolToBodyToBody(string pKey, bool pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddOSDToBody(string pKey, OSD pValue)
+        public void AddOSDToBodyToBody(string pKey, OSD pValue)
         {
             m_body[pKey] = pValue;
         }
@@ -378,15 +396,40 @@ namespace WebRtcVoice
 
         public OSDMap PluginRespData { get { return m_data; } }
 
+        // Get a boolean value for a key in the response data or false if not there
+        public bool PluginRespDataBool(string pKey)
+        {
+            return m_data.ContainsKey(pKey) ? m_data[pKey].AsBoolean() : false;
+        }
         // Get an integer value for a key in the response data or zero if not there
         public int PluginRespDataInt(string pKey)
         {
-            return m_data.ContainsKey(pKey) ? (int)m_data[pKey].AsLong() : 0;
+            return m_data.ContainsKey(pKey) ? m_data[pKey].AsInteger() : 0;
         }
         // Get a string value for a key in the response data or empty string if not there
         public string PluginRespDataString(string pKey)
         {
             return m_data.ContainsKey(pKey) ? m_data[pKey].AsString() : String.Empty;
+        }
+        // Get a list of dictionaries from the response data
+        public List<Dictionary<string, string>> PluginRespDataList(string pKey)
+        {
+            List<Dictionary<string, string>> ret = new List<Dictionary<string, string>>();
+            if (m_data is not null && m_data.ContainsKey(pKey))
+            {
+                var list = m_data[pKey] as OSDArray;
+                foreach (var item in list)
+                {
+                    var itemMap = item as OSDMap;
+                    Dictionary<string, string> itemDict = new Dictionary<string, string>();
+                    foreach (var key in itemMap.Keys)
+                    {
+                        itemDict[key] = itemMap[key].AsString();
+                    }
+                    ret.Add(itemDict);
+                }
+            }
+            return ret;
         }
     }
     // ==============================================================
@@ -436,7 +479,7 @@ namespace WebRtcVoice
                                             })  
         {
             if (!String.IsNullOrEmpty(pDesc))
-                AddStringToBody("description", pDesc);
+            AddStringToBodyToBody("description", pDesc);
         }
     }
     // ==============================================================
@@ -515,6 +558,54 @@ namespace WebRtcVoice
                                             })  
         {
         }
+    }
+    public class AudioBridgeListParticipantsResp : AudioBridgeResp
+    {
+        public AudioBridgeListParticipantsResp(JanusMessageResp pResp) : base(pResp)
+        {
+        }
+        public List<Dictionary<string, string>> Participants { get { return PluginRespDataList("participants"); } }
+    }
+    // ==============================================================
+    //Playback of OPUS files
+    public class AudioBridgePlayFileReq: PluginMsgReq
+    {
+        public AudioBridgePlayFileReq(int pRoom, string filename, bool loop) : base(new OSDMap() {
+                                            { "request", "play_file"},
+                                            { "room", pRoom },
+                                            { "filename", filename },
+                                            { "loop", loop },
+                                            { "file_id", filename.GetHashCode().ToString() }
+                                            })
+        {            
+        }
+    }
+    public class AudioBridgeStopFileReq: PluginMsgReq
+    {
+        public AudioBridgeStopFileReq(int pRoom, string filename) : base(new OSDMap() {
+                                            { "request", "stop_file"},
+                                            { "room", pRoom },
+                                            { "file_id", filename.GetHashCode().ToString() }
+                                            })
+        {            
+        }
+    }
+    public class AudioBridgeIsPlayingFileReq: PluginMsgReq
+    {
+        public AudioBridgeIsPlayingFileReq(int pRoom, string filename) : base(new OSDMap() {
+                                            { "request", "is_playing"},
+                                            { "room", pRoom },
+                                            { "file_id", filename.GetHashCode().ToString() }
+                                            })
+        {            
+        }
+    }
+    public class AudioBridgeIsPlayingFileResp : AudioBridgeResp
+    {
+        public AudioBridgeIsPlayingFileResp(JanusMessageResp pResp) : base(pResp)
+        {
+        }
+        public bool IsPlaying { get { return PluginRespDataBool("playing"); } }
     }
     // ==============================================================
     public class AudioBridgeEvent : AudioBridgeResp

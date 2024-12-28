@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebRtcVoiceServiceModule", "WebRtcVoiceServiceModule\WebRtcVoiceServiceModule.csproj", "{A7AECACB-073B-4007-A2B3-DEBD1C27F1CE}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebRtcVoice", "WebRtcVoice\WebRtcVoice.csproj", "{5EEC411E-74FE-425B-874E-EAD17B3EC1CD}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebRtcVoiceRegionModule", "WebRtcVoiceRegionModule\WebRtcVoiceRegionModule.csproj", "{AAA9CF97-6289-4E6C-81C0-CC99E88EB224}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebRtcJanusService", "Janus\WebRtcJanusService.csproj", "{F02B2CD2-544B-43A5-8F5E-D94D356F2E78}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A7AECACB-073B-4007-A2B3-DEBD1C27F1CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7AECACB-073B-4007-A2B3-DEBD1C27F1CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7AECACB-073B-4007-A2B3-DEBD1C27F1CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7AECACB-073B-4007-A2B3-DEBD1C27F1CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5EEC411E-74FE-425B-874E-EAD17B3EC1CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5EEC411E-74FE-425B-874E-EAD17B3EC1CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5EEC411E-74FE-425B-874E-EAD17B3EC1CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5EEC411E-74FE-425B-874E-EAD17B3EC1CD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AAA9CF97-6289-4E6C-81C0-CC99E88EB224}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AAA9CF97-6289-4E6C-81C0-CC99E88EB224}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AAA9CF97-6289-4E6C-81C0-CC99E88EB224}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AAA9CF97-6289-4E6C-81C0-CC99E88EB224}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F02B2CD2-544B-43A5-8F5E-D94D356F2E78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F02B2CD2-544B-43A5-8F5E-D94D356F2E78}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F02B2CD2-544B-43A5-8F5E-D94D356F2E78}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F02B2CD2-544B-43A5-8F5E-D94D356F2E78}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0BC1A7F3-01BB-482C-83F7-33B832F4D512}
+	EndGlobalSection
+EndGlobal

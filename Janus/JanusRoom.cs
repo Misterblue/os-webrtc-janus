@@ -25,6 +25,8 @@ using log4net;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
+using OSHttpServer;
+using System.Linq;
 
 namespace WebRtcVoice
 {
@@ -55,6 +57,7 @@ namespace WebRtcVoice
         {
             m_log.DebugFormat("{0} JoinRoom. Entered", LogHeader);
             bool ret = false;
+            JanusMessageResp resp = null;
             try
             {
                 // Discovered that AudioBridge doesn't care if the data portion is present
@@ -66,7 +69,7 @@ namespace WebRtcVoice
                 // joinReq.SetJsep("offer", cleanSdp);
                 joinReq.SetJsep("offer", pVSession.Offer);
 
-                JanusMessageResp resp = await _AudioBridge.SendPluginMsg(joinReq);
+                resp = await _AudioBridge.SendPluginMsg(joinReq);
                 AudioBridgeJoinRoomResp joinResp = new AudioBridgeJoinRoomResp(resp);
 
                 if (joinResp is not null && joinResp.AudioBridgeReturnCode == "joined")
@@ -85,6 +88,15 @@ namespace WebRtcVoice
             {
                 m_log.ErrorFormat("{0} JoinRoom. Exception {1}", LogHeader, e);
             }
+            
+            // Just get some debug output of the room's participants
+            resp = await _AudioBridge.SendPluginMsg( 
+                new AudioBridgeListParticipantsReq(RoomId)
+            );
+
+            // will only play the file if not already playing
+            if(ret) await PlayFileInRoom("/tmp/sample3.opus", true);
+
             return ret;
         }
 
@@ -108,14 +120,85 @@ namespace WebRtcVoice
         public async Task<bool> LeaveRoom(JanusViewerSession pAttendeeSession)
         {
             bool ret = false;
+            JanusMessageResp resp = null;
             try
             {
-                JanusMessageResp resp = await _AudioBridge.SendPluginMsg(
+                resp = await _AudioBridge.SendPluginMsg(
                     new AudioBridgeLeaveRoomReq(RoomId, pAttendeeSession.ParticipantId));
             }
             catch (Exception e)
             {
                 m_log.ErrorFormat("{0} LeaveRoom. Exception {1}", LogHeader, e);
+            }
+
+            resp = await _AudioBridge.SendPluginMsg( 
+                new AudioBridgeListParticipantsReq(RoomId)
+            );
+            AudioBridgeListParticipantsResp abResp = new AudioBridgeListParticipantsResp(resp);
+
+            string[] participants = [];
+            foreach(var p in abResp.Participants)
+            {
+                if(p.ContainsKey("display") &&  Guid.TryParse(p["display"], out Guid guid))
+                {
+                    participants.Append(guid.ToString());
+                }
+            }
+
+            if(participants.Count() > 0)
+            {
+                m_log.DebugFormat("{0} LeaveRoom. Participants: {1} still in room {2}.", LogHeader, string.Join(", ", participants), RoomId);
+            }
+            else
+            {
+                await StopFileInRoom("/tmp/sample3.opus");
+                m_log.DebugFormat("{0} LeaveRoom. No participants in room {1}.", LogHeader, RoomId);
+            }
+
+            return ret;
+        }   
+
+        public async Task<bool> PlayFileInRoom(string fileName, bool loop = false)
+        {
+            bool ret = false;
+            try
+            {
+                JanusMessageResp resp = await _AudioBridge.SendPluginMsg( 
+                    new AudioBridgeIsPlayingFileReq(RoomId, fileName)
+                );
+                AudioBridgeIsPlayingFileResp abResp1 = new AudioBridgeIsPlayingFileResp(resp);
+                if(abResp1.IsPlaying) return true;
+
+                resp = await _AudioBridge.SendPluginMsg( 
+                    new AudioBridgePlayFileReq(RoomId, fileName, loop)
+                );   
+                AudioBridgeResp abResp2 = new AudioBridgeResp(resp);
+                ret = abResp2.isSuccess;
+                m_log.DebugFormat("{0} PlayFileInRoom. ReturnCode: {1}", LogHeader, abResp2.AudioBridgeReturnCode);
+
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} PlayFileInRoom. Exception {1}", LogHeader, e);
+            }
+            return ret;
+        }
+
+        public async Task<bool> StopFileInRoom(string fileName)
+        {
+            bool ret = false;
+            try
+            {
+                JanusMessageResp resp = await _AudioBridge.SendPluginMsg( 
+                    new AudioBridgeStopFileReq(RoomId, fileName)
+                );
+                AudioBridgeResp abResp = new AudioBridgeResp(resp);
+                ret = abResp.isSuccess;
+                m_log.DebugFormat("{0} StopFileInRoom. ReturnCode: {1}", LogHeader, abResp.AudioBridgeReturnCode);
+            }
+            catch (Exception e)
+            {
+                m_log.ErrorFormat("{0} StopFileInRoom. Exception {1}", LogHeader, e);
             }
             return ret;
         }
