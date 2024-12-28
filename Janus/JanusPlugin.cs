@@ -85,6 +85,8 @@ namespace WebRtcVoice
                     PluginId = handleResp.pluginId;
                     PluginUri = _JanusSession.SessionUri + "/" + PluginId;
                     m_log.DebugFormat("{0} Activate. Created. ID={1}, URL={2}", LogHeader, PluginId, PluginUri);
+                    _JanusSession.OnEvent += Handle_Event;
+                    _JanusSession.OnMessage += Handle_Message;
                     ret = true;
                 }
                 else
@@ -103,8 +105,15 @@ namespace WebRtcVoice
         public virtual async Task<bool> Detach()
         {
             bool ret = false;
+            if (!IsConnected || _JanusSession is null)
+            {
+                m_log.WarnFormat("{0} Detach. Not connected", LogHeader);
+                return ret;
+            }
             try
             {
+                _JanusSession.OnEvent -= Handle_Event;
+                _JanusSession.OnMessage -= Handle_Message;
                 // We send the 'detach' message to the plugin URI
                 var resp = await _JanusSession.SendToJanus(new DetachPluginReq(), PluginUri);
                 if (resp is not null && resp.isSuccess)
@@ -123,6 +132,15 @@ namespace WebRtcVoice
             }
 
             return ret;
+        }
+
+        public virtual void Handle_Event(JanusMessageResp pResp)
+        {
+            m_log.DebugFormat("{0} Handle_Event: {1}", LogHeader, pResp.ToString());
+        }
+        public virtual void Handle_Message(JanusMessageResp pResp)
+        {
+            m_log.DebugFormat("{0} Handle_Message: {1}", LogHeader, pResp.ToString());
         }   
     }
 }

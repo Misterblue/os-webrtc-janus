@@ -38,6 +38,15 @@ namespace WebRtcVoice
         public JanusMessage()
         {
         }
+        // A basic Janus message is:
+        // {
+        //    "janus": "operation",
+        //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea",
+        //    "session_id": 5645225333294848,   // optional, gives the session ID
+        //    "handle_id": 6969906757968657    // optional, gives the plugin handle ID
+        //    "sender": 6969906757968657        // optional, gives the ID of the sending subsystem
+        //    "jsep": { "type": "offer", "sdp": "..." }  // optional, gives the SDP
+        //  }
         public JanusMessage(string pType) : this()
         {
             m_message["janus"] = pType;
@@ -66,6 +75,24 @@ namespace WebRtcVoice
             };
         }
 
+        public void AddAPIToken(string pToken)
+        {
+            m_message["apisecret"] = pToken;
+        }
+        // Note that the session_id is a long number in the JSON so we convert the string.
+        public void AddSessionId(string pToken)
+        {
+            m_message["session_id"] = long.Parse(pToken);
+        }
+        public void AddSessionId(long pToken)
+        {
+            m_message["session_id"] = pToken;
+        }
+        public void AddHandleId(string pToken)
+        {
+            m_message["handle_id"] = pToken;
+        }
+
         public virtual string ToJson()
         {
             return m_message.ToString();
@@ -76,18 +103,26 @@ namespace WebRtcVoice
         }
     }
     // ==============================================================
+    // A Janus request message is a basic Janus message with an API token
     public class JanusMessageReq : JanusMessage
     {
         public JanusMessageReq(string pType) : base(pType)
         {
         }
-        public void AddAPIToken(string pToken)
-        {
-            m_message["apisecret"] = pToken;
-        }
     }
 
     // ==============================================================
+    // Janus message response is a basic Janus message with the response data
+    // {
+    //    "janus": "success",
+    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea", // ID of the requesting message
+    //    "data": { ... }  // the response data
+    //    "error": { "code": 123, "reason": "..." }  // if there was an error
+    // }
+    // The "janus" return code changes depending on the request. The above is for
+    //    a successful response. Could be
+    //      "event": for an event message (See JanusEventResp)
+    //      "keepalive": for a keepalive event
     public class JanusMessageResp : JanusMessage
     {
         public JanusMessageResp() : base()
@@ -109,6 +144,9 @@ namespace WebRtcVoice
             return new JanusMessageResp(newBody);
         }
 
+        // Return the "data" portion of the response as an OSDMap or null if there is none
+        public OSDMap dataSection { get { return m_message.ContainsKey("data") ? (m_message["data"] as OSDMap) : null; } }        
+
         // Check if a successful response code is in the response
         public virtual bool isSuccess { get { return CheckReturnCode("success"); } }
         public virtual bool isEvent { get { return CheckReturnCode("event"); } }
@@ -120,13 +158,19 @@ namespace WebRtcVoice
             string ret = String.Empty;
             if (m_message is not null && m_message.ContainsKey("janus"))
             {
-                ret = m_message["janus"];
+                ret = m_message["janus"].AsString();
             }
             return ret;
         } }
     }
 
     // ==============================================================
+    // An error response is a Janus response with an error code and reason.
+    // {
+    //    "janus": "error",
+    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea", // ID of the requesting message
+    //    "error": { "code": 123, "reason": "..." }  // if there was an error
+    // }
     public class ErrorResp : JanusMessageResp
     {
         public ErrorResp() : base("error")
@@ -150,12 +194,7 @@ namespace WebRtcVoice
             };
         }
 
-        public void AddSessionId(string pSessionId)
-        {
-            m_message["session_id"] = long.Parse(pSessionId);
-        }
-
-        // Dig through the response to get the error code and reason
+        // Dig through the response to get the error code or 0 if there is none
         public int errorCode { get {
             int ret = 0;
             if (m_message.ContainsKey("error"))
@@ -167,6 +206,7 @@ namespace WebRtcVoice
             return ret;
         }}
 
+        // Dig through the response to get the error reason or empty string if there is none
         public string errorReason { get {
             string ret = String.Empty;
             if (m_message.ContainsKey("error"))
@@ -180,6 +220,7 @@ namespace WebRtcVoice
         }}
     }
     // ==============================================================
+    // Create session request and response
     public class CreateSessionReq : JanusMessageReq
     {
         public CreateSessionReq() : base("create")
@@ -190,23 +231,13 @@ namespace WebRtcVoice
     {
         public CreateSessionResp(JanusMessageResp pResp) : base(pResp.RawBody)
         { }
-        public string sessionId { get {
-            string ret = String.Empty;
-            if (m_message.ContainsKey("data"))
-            {
-                var data = m_message["data"];
-                    if (data is OSDMap)
-                    {
-                        var theId = (data as OSDMap)["id"];
-                        // The JSON response gives a long number (not a string)
-                        //    and the ODMap conversion interprets it as a long (OSDLong).
-                        // If one just does a "ToString()" on the OSD object, you
-                        //    get an interpretation of the binary value.
-                        ret = theId.AsLong().ToString();
-                    }
-            }
-            return ret;
-        }}  
+        public string returnedId { get {
+            // The JSON response gives a long number (not a string)
+            //    and the ODMap conversion interprets it as a long (OSDLong).
+            // If one just does a "ToString()" on the OSD object, you
+            //    get an interpretation of the binary value.
+            return dataSection.ContainsKey("id") ? dataSection["id"].AsLong().ToString() : String.Empty;
+        }}   
     }
     // ==============================================================
     public class DestroySessionReq : JanusMessageReq
@@ -250,17 +281,7 @@ namespace WebRtcVoice
         public AttachPluginResp(JanusMessageResp pResp) : base(pResp.RawBody)
         { }
         public string pluginId { get {
-            string ret = String.Empty;
-            if (m_message.ContainsKey("data"))
-            {
-                var data = m_message["data"];
-                if (data is OSDMap)
-                {
-                    var theId = (data as OSDMap)["id"];
-                    ret = theId.AsLong().ToString();
-                }
-            }
-            return ret;
+             return dataSection.ContainsKey("id") ? dataSection["id"].AsLong().ToString() : String.Empty;
         }}
     }
     // ==============================================================
@@ -283,26 +304,36 @@ namespace WebRtcVoice
     // Plugin messages are defined here as wrappers around OSDMap.
     // The ToJson() method is overridden to put the OSDMap into the
     //    message body.
+    // A plugin request is formatted like:
+    //  {
+    //    "janus": "message",
+    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea",
+    //    "body": {
+    //        "request": "create",
+    //        "room": 10,
+    //        "is_private": false,
+    // }
     public class PluginMsgReq : JanusMessageReq
     {
         private OSDMap m_body = new OSDMap();
+        // Note that the passed OSDMap is placed in the "body" section of the message
         public PluginMsgReq(OSDMap pBody) : base("message")
         {
             m_body = pBody;
         }
-        public void AddString(string pKey, string pValue)
+        public void AddStringToBody(string pKey, string pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddInt(string pKey, int pValue)
+        public void AddIntToBody(string pKey, int pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddBool(string pKey, bool pValue)
+        public void AddBoolToBody(string pKey, bool pValue)
         {
             m_body[pKey] = pValue;
         }
-        public void AddOSD(string pKey, OSD pValue)
+        public void AddOSDToBody(string pKey, OSD pValue)
         {
             m_body[pKey] = pValue;
         }
@@ -335,6 +366,7 @@ namespace WebRtcVoice
         {
             if (m_message is not null && m_message.ContainsKey("plugindata"))
             {
+                // Move the plugin data up into the m_data var so it is easier to get to
                 m_pluginData = m_message["plugindata"] as OSDMap;
                 if (m_pluginData.ContainsKey("data"))
                 {
@@ -355,24 +387,17 @@ namespace WebRtcVoice
             }
             return ret;
         }
+        // Get an integer value for a key in the response data or zero if not there
         public int PluginRespDataInt(string pKey)
         {
-            int ret = 0;
-            if (m_data is not null && m_data.ContainsKey(pKey))
-            {
-                ret = (int)m_data[pKey].AsLong();
-            }
-            return ret;
+            return m_data.ContainsKey(pKey) ? (int)m_data[pKey].AsLong() : 0;
         }
+        // Get a string value for a key in the response data or empty string if not there
         public string PluginRespDataString(string pKey)
         {
-            string ret = String.Empty;
-            if (m_data is not null && m_data.ContainsKey(pKey))
-            {
-                ret = m_data[pKey].AsString();
-            }
-            return ret;
+            return m_data.ContainsKey(pKey) ? m_data[pKey].AsString() : String.Empty;
         }
+        // Get a list of dictionaries from the response data
         public List<Dictionary<string, string>> PluginRespDataList(string pKey)
         {
             List<Dictionary<string, string>> ret = new List<Dictionary<string, string>>();
@@ -394,6 +419,21 @@ namespace WebRtcVoice
         }
     }
     // ==============================================================
+    // Plugin messages for the audio bridge.
+    // Audiobridge responses are formatted like:
+    //    {
+    //    "janus": "success",
+    //    "session_id": 5645225333294848,
+    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea",
+    //    "sender": 6969906757968657,
+    //    "plugindata": {
+    //        "plugin": "janus.plugin.audiobridge",
+    //        "data": {
+    //            "audiobridge": "created",
+    //            "room": 10,
+    //            "permanent": false
+    //        }
+    //    }
     public class AudioBridgeResp: PluginMsgResp
     {
         public AudioBridgeResp(JanusMessageResp pResp) : base(pResp)
@@ -425,7 +465,7 @@ namespace WebRtcVoice
                                             })  
         {
             if (!String.IsNullOrEmpty(pDesc))
-                AddString("description", pDesc);
+            AddStringToBody("description", pDesc);
         }
     }
     // ==============================================================
@@ -451,6 +491,7 @@ namespace WebRtcVoice
         }
     }
     // ==============================================================
+    // A successful response contains the participant ID and the SDP
     public class AudioBridgeJoinRoomResp : AudioBridgeResp
     {
         public AudioBridgeJoinRoomResp(JanusMessageResp pResp) : base(pResp)
@@ -496,6 +537,7 @@ namespace WebRtcVoice
         {
         }
     }
+    // ==============================================================
     public class AudioBridgeListParticipantsReq : PluginMsgReq
     {
         public AudioBridgeListParticipantsReq(int pRoom) : base(new OSDMap() {
@@ -554,6 +596,39 @@ namespace WebRtcVoice
         public bool IsPlaying { get { return PluginRespDataBool("playing"); } }
     }
     // ==============================================================
+    public class AudioBridgeEvent : AudioBridgeResp
+    {
+        public AudioBridgeEvent(JanusMessageResp pResp) : base(pResp)
+        {
+        }
+    }
+    // ==============================================================
+    // The LongPoll request returns events from  the plugins. These are formatted
+    //    like the other responses but are not responses to requests.
+    // They are formatted like:
+    //    {
+    //    "janus": "event",
+    //    "sender": 6969906757968657,
+    //    "transaction": "baefcec8-70c5-4e79-b2c1-d653b9617dea",
+    //    "plugindata": {
+    //        "plugin": "janus.plugin.audiobridge",
+    //        "data": {
+    //            "audiobridge": "event",
+    //            "room": 10,
+    //            "participants": 1,
+    //            "participants": [
+    //                {
+    //                    "id": 1234,
+    //                    "display": "John Doe",
+    //                    "audio_level": 0.0,
+    //                    "video_room": false,
+    //                    "video_muted": false,
+    //                    "audio_muted": false,
+    //                    "feed": 1234
+    //                }
+    //            ]
+    //        }
+    //    }
     public class EventResp : JanusMessageResp
     {
         public EventResp() : base()

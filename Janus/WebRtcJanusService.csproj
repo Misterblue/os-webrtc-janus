@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <Version>1.0.15</Version>
     <PreserveCompilationContext>false</PreserveCompilationContext>
     <OutputType>Library</OutputType>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -27,6 +28,7 @@
     <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
     <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
     <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+    <Version>1.0.15</Version>
     <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
     <OutputPath>../../../bin/</OutputPath>
     <RegisterForComInterop>False</RegisterForComInterop>
@@ -50,6 +52,7 @@
     <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
     <UseCommonOutputDirectory>True</UseCommonOutputDirectory>
     <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+    <Version>1.0.15</Version>
     <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
     <OutputPath>../../../bin/</OutputPath>
     <RegisterForComInterop>False</RegisterForComInterop>
@@ -63,7 +66,7 @@
   <ItemGroup>
     <Reference Include="log4net" >
       <Name>log4net</Name>
-      <HintPath>/home/jak/src/opensim/bin/log4net.dll</HintPath>
+      <HintPath>../../../bin/log4net.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Mono.Addins" >
@@ -73,22 +76,22 @@
     </Reference>
     <Reference Include="Nini" >
       <Name>Nini</Name>
-      <HintPath>/home/jak/src/opensim/bin/Nini.dll</HintPath>
+      <HintPath>../../../bin/Nini.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenMetaverse" >
       <Name>OpenMetaverse</Name>
-      <HintPath>/home/jak/src/opensim/bin/OpenMetaverse.dll</HintPath>
+      <HintPath>../../../bin/OpenMetaverse.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenMetaverse.StructuredData" >
       <Name>OpenMetaverse.StructuredData</Name>
-      <HintPath>/home/jak/src/opensim/bin/OpenMetaverse.StructuredData.dll</HintPath>
+      <HintPath>../../../bin/OpenMetaverse.StructuredData.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="OpenMetaverseTypes" >
       <Name>OpenMetaverseTypes</Name>
-      <HintPath>/home/jak/src/opensim/bin/OpenMetaverseTypes.dll</HintPath>
+      <HintPath>../../../bin/OpenMetaverseTypes.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>

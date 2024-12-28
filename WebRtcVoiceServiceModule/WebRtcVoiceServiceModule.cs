@@ -190,6 +190,7 @@ namespace WebRtcVoice
             {
                 foreach(KeyValuePair<string, IVoiceViewerSession> v in vSessions)
                 {
+                    m_log.DebugFormat("{0} Event_OnRemovePresence: removing viewer session {1}", LogHeader, v.Key);
                     VoiceViewerSession.RemoveViewerSession(v.Key);
                     v.Value.Shutdown();
                 }

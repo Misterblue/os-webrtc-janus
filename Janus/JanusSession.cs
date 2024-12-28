@@ -46,7 +46,7 @@ namespace WebRtcVoice
 
         private HttpClient _HttpClient = new HttpClient();
 
-        public bool IsConnected => !String.IsNullOrEmpty(SessionId);
+         public bool IsConnected { get; set; }
 
         // Wrapper around the session connection to Janus-gateway
         public JanusSession(string pServerURI, string pAPIToken, string pAdminURI, string pAdminToken, bool pDebugMessages = false)
@@ -87,7 +87,8 @@ namespace WebRtcVoice
                 if (resp is not null && resp.isSuccess)
                 {
                     var sessionResp = new CreateSessionResp(resp);
-                    SessionId = sessionResp.sessionId;
+                    SessionId = sessionResp.returnedId;
+                    IsConnected = true;
                     SessionUri = _JanusServerURI + "/" + SessionId;
                     m_log.DebugFormat("{0} CreateSession. Created. ID={1}, URL={2}", LogHeader, SessionId, SessionUri);
                     ret = true;
@@ -114,9 +115,8 @@ namespace WebRtcVoice
                 var resp = await SendToSession(new DestroySessionReq());
                 if (resp is not null && resp.isSuccess)
                 {
-                    // Note that setting SessionID to null will cause the long poll to exit
-                    SessionId = String.Empty;
-                    SessionUri = String.Empty;
+                    // Note that setting IsConnected to false will cause the long poll to exit
+                    IsConnected = false;
                     m_log.DebugFormat("{0} DestroySession. Destroyed", LogHeader);
                 }
                 else
@@ -393,6 +393,7 @@ namespace WebRtcVoice
         public event JanusEventHandler OnDetached;
         public event JanusEventHandler OnError;
         public event JanusEventHandler OnEvent;
+        public event JanusEventHandler OnMessage;
         public event JanusEventHandler OnJoined;
         public event JanusEventHandler OnLeaving;
         public event JanusEventHandler OnDisconnect;
@@ -406,6 +407,7 @@ namespace WebRtcVoice
             OnDetached = null;
             OnError = null;
             OnEvent = null;
+            OnMessage = null;
             OnJoined = null;
             OnLeaving = null;
             OnDisconnect = null;
@@ -500,7 +502,12 @@ namespace WebRtcVoice
                                         else
                                         {
                                             m_log.ErrorFormat("{0} EventLongPoll: event no outstanding request {1}", LogHeader, resp.ToString());
+                                            OnEvent?.Invoke(eventResp);
                                         }
+                                        break;
+                                    case "message":
+                                        m_log.DebugFormat("{0} EventLongPoll: message {1}", LogHeader, resp.ToString());
+                                        OnMessage?.Invoke(eventResp);
                                         break;
                                     case "timeout":
                                         // Events for the audio bridge

@@ -10,16 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Reflection;
 using System.Threading.Tasks;
 
 using OMV = OpenMetaverse;
 using OpenMetaverse.StructuredData;
 using OpenMetaverse;
+using log4net;
 
 namespace WebRtcVoice
 {
     public class JanusViewerSession : IVoiceViewerSession
     {
+        protected static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        protected static readonly string LogHeader = "[JANUS VIEWER SESSION]";
+
         // 'viewer_session' that is passed to and from the viewer
         // IVoiceViewerSession.ViewerSessionID
         public string ViewerSessionID { get; set; }
@@ -29,9 +34,9 @@ namespace WebRtcVoice
         // IVoiceViewerSession.VoiceServiceSessionId
         public string VoiceServiceSessionId { get; set; }
         // IVoiceViewerSession.RegionId
-        public UUID RegionId { get; set; }
+        public OMV.UUID RegionId { get; set; }
         // IVoiceViewerSession.AgentId
-        public UUID AgentId { get; set; }
+        public OMV.UUID AgentId { get; set; }
 
         // Janus keeps track of the user by this ID
         public int ParticipantId { get; set; }
@@ -51,17 +56,20 @@ namespace WebRtcVoice
         {
             ViewerSessionID = OMV.UUID.Random().ToString();
             VoiceService = pVoiceService;
+            m_log.DebugFormat("{0} JanusViewerSession created {1}", LogHeader, ViewerSessionID);
         }
         public JanusViewerSession(string pViewerSessionID, IWebRtcVoiceService pVoiceService)
         {
             ViewerSessionID = pViewerSessionID;
             VoiceService = pVoiceService;
+            m_log.DebugFormat("{0} JanusViewerSession created {1}", LogHeader, ViewerSessionID);
         }
 
         // Send the messages to the voice service to try and get rid of the session
         // IVoiceViewerSession.Shutdown
         public async Task Shutdown()
         {
+            m_log.DebugFormat("{0} JanusViewerSession shutdown {1}", LogHeader, ViewerSessionID);
             if (Room is not null)
             {
                 var rm = Room;
@@ -79,6 +87,7 @@ namespace WebRtcVoice
                 var s = Session;
                 Session = null;
                 await s.DestroySession();
+                s.Dispose();
             }
         }
     }

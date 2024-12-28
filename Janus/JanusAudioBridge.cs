@@ -38,6 +38,7 @@ namespace WebRtcVoice
                 // Close the handle
 
             }
+            base.Dispose();
         }
 
         public async Task<AudioBridgeResp> SendAudioBridgeMsg(PluginMsgReq pMsg)
@@ -207,6 +208,29 @@ namespace WebRtcVoice
                 _rooms.TryGetValue(pRoomId, out ret);
             }
             return ret;
-        }   
+        }
+
+        public override void Handle_Event(JanusMessageResp pResp)
+        {
+            base.Handle_Event(pResp);
+            AudioBridgeResp abResp = new AudioBridgeResp(pResp);
+            if (abResp is not null && abResp.AudioBridgeReturnCode == "event")
+            {
+                // An audio bridge event!
+                m_log.DebugFormat("{0} Handle_Event. {1}", LogHeader, abResp.ToString());
+            }
+
+        }
+        public override void Handle_Message(JanusMessageResp pResp)
+        {
+            base.Handle_Message(pResp);
+            AudioBridgeResp abResp = new AudioBridgeResp(pResp);
+            if (abResp is not null && abResp.AudioBridgeReturnCode == "event")
+            {
+                // An audio bridge event!
+                m_log.DebugFormat("{0} Handle_Event. {1}", LogHeader, abResp.ToString());
+            }
+
+        }  
     }
 }

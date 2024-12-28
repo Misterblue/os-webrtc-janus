@@ -147,17 +147,26 @@ namespace WebRtcVoice
                 if (VoiceViewerSession.TryGetViewerSessionByVSSessionId(sessionId, out IVoiceViewerSession viewerSession))
                 {
                     // There is a viewer session associated with this session
-                    Task.Run(() =>
-                    {
-                        VoiceViewerSession.RemoveViewerSession(viewerSession.ViewerSessionID);
-                        // No need to wait for the session to be shutdown
-                        _ = viewerSession.Shutdown();
-                    });
+                    DisconnectViewerSession(viewerSession as JanusViewerSession);
                 }
                 else
                 {
-                    _log.DebugFormat("{0} Handle_Hangup: no session found", LogHeader);
+                    _log.DebugFormat("{0} Handle_Hangup: no session found. SessionId={1}", LogHeader, sessionId);
                 }
+            }
+        }
+
+        // Disconnect the viewer session. This is called when the viewer logs out or hangs up.
+        private void DisconnectViewerSession(JanusViewerSession pViewerSession)
+        {
+            if (pViewerSession is not null)
+            {
+                Task.Run(() =>
+                {
+                    VoiceViewerSession.RemoveViewerSession(pViewerSession.ViewerSessionID);
+                    // No need to wait for the session to be shutdown
+                    _ = pViewerSession.Shutdown();
+                });
             }
         }
 
@@ -187,11 +196,11 @@ namespace WebRtcVoice
                     {
                         await viewerSession.Room.LeaveRoom(viewerSession);
                         viewerSession.Room = null;
-                        return new OSDMap
-                        {
-                            { "response", "closed" }
-                        };
                     }
+                    return new OSDMap
+                    {
+                        { "response", "closed" }
+                    };
                 }
 
                 // Get the parameters that select the room
@@ -254,9 +263,8 @@ namespace WebRtcVoice
             }
             else
             {
-                errorMsg = "no JanusAudioBridge";
-                _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: no JanusAudioBridge", LogHeader);
-            }
+                errorMsg = "viewersession not JanusViewerSession";
+                _log.ErrorFormat("{0} ProvisionVoiceAccountRequest: viewersession not JanusViewerSession", LogHeader);            }
 
             if (!String.IsNullOrEmpty(errorMsg) && ret is null)
             {

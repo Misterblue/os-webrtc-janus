@@ -74,10 +74,10 @@ namespace WebRtcVoice
 
                 if (joinResp is not null && joinResp.AudioBridgeReturnCode == "joined")
                 {
-                    m_log.DebugFormat("{0} JoinRoom. Joined room {1}", LogHeader, RoomId);
                     pVSession.ParticipantId = joinResp.ParticipantId;
                     pVSession.Answer = joinResp.Jsep;
                     ret = true;
+                     m_log.DebugFormat("{0} JoinRoom. Joined room {1}. Participant={2}", LogHeader, RoomId, pVSession.ParticipantId);
                 }
                 else
                 {
