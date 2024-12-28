@@ -136,7 +136,7 @@ namespace WebRtcVoice
             );
             AudioBridgeListParticipantsResp abResp = new AudioBridgeListParticipantsResp(resp);
 
-            string[] participants = new string[] { };
+            string[] participants = [];
             foreach(var p in abResp.Participants)
             {
                 if(p.ContainsKey("display") &&  Guid.TryParse(p["display"], out Guid guid))
