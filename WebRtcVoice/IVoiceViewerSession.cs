@@ -14,8 +14,6 @@ using System.Threading.Tasks;
 
 using OMV = OpenMetaverse;
 
-using OMV = OpenMetaverse;
-
 namespace WebRtcVoice
 {
     public interface IVoiceViewerSession

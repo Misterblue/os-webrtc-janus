@@ -396,15 +396,40 @@ namespace WebRtcVoice
 
         public OSDMap PluginRespData { get { return m_data; } }
 
-        // Get an integer value for a key in the response data or zero if not there
+        // Get a boolean value for a key in the response data or false if not there
         public bool PluginRespDataBool(string pKey)
         {
-            return m_data.ContainsKey(pKey) ? (int)m_data[pKey].AsLong() : 0;
+            return m_data.ContainsKey(pKey) ? m_data[pKey].AsBoolean() : false;
+        }
+        // Get an integer value for a key in the response data or zero if not there
+        public int PluginRespDataInt(string pKey)
+        {
+            return m_data.ContainsKey(pKey) ? m_data[pKey].AsInteger() : 0;
         }
         // Get a string value for a key in the response data or empty string if not there
         public string PluginRespDataString(string pKey)
         {
             return m_data.ContainsKey(pKey) ? m_data[pKey].AsString() : String.Empty;
+        }
+        // Get a list of dictionaries from the response data
+        public List<Dictionary<string, string>> PluginRespDataList(string pKey)
+        {
+            List<Dictionary<string, string>> ret = new List<Dictionary<string, string>>();
+            if (m_data is not null && m_data.ContainsKey(pKey))
+            {
+                var list = m_data[pKey] as OSDArray;
+                foreach (var item in list)
+                {
+                    var itemMap = item as OSDMap;
+                    Dictionary<string, string> itemDict = new Dictionary<string, string>();
+                    foreach (var key in itemMap.Keys)
+                    {
+                        itemDict[key] = itemMap[key].AsString();
+                    }
+                    ret.Add(itemDict);
+                }
+            }
+            return ret;
         }
     }
     // ==============================================================
@@ -581,13 +606,6 @@ namespace WebRtcVoice
         {
         }
         public bool IsPlaying { get { return PluginRespDataBool("playing"); } }
-    }
-    // ==============================================================
-    public class AudioBridgeEvent : AudioBridgeResp
-    {
-        public AudioBridgeEvent(JanusMessageResp pResp) : base(pResp)
-        {
-        }
     }
     // ==============================================================
     public class AudioBridgeEvent : AudioBridgeResp

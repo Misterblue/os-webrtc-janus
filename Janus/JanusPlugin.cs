@@ -142,14 +142,5 @@ namespace WebRtcVoice
         {
             m_log.DebugFormat("{0} Handle_Message: {1}", LogHeader, pResp.ToString());
         }   
-
-        public virtual void Handle_Event(JanusMessageResp pResp)
-        {
-            m_log.DebugFormat("{0} Handle_Event: {1}", LogHeader, pResp.ToString());
-        }
-        public virtual void Handle_Message(JanusMessageResp pResp)
-        {
-            m_log.DebugFormat("{0} Handle_Message: {1}", LogHeader, pResp.ToString());
-        }
     }
 }
