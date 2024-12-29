@@ -84,19 +84,20 @@ namespace WebRtcVoice
                     var handleResp = new AttachPluginResp(resp);
                     PluginId = handleResp.pluginId;
                     PluginUri = _JanusSession.SessionUri + "/" + PluginId;
-                    m_log.DebugFormat("{0} Activate. Created. ID={1}, URL={2}", LogHeader, PluginId, PluginUri);
+                    m_log.DebugFormat("{0} Activate. Plugin attached. ID={1}, URL={2}", LogHeader, PluginId, PluginUri);
+                    _JanusSession.PluginId = PluginId;
                     _JanusSession.OnEvent += Handle_Event;
                     _JanusSession.OnMessage += Handle_Message;
                     ret = true;
                 }
                 else
                 {
-                    m_log.ErrorFormat("{0} Activate: failed", LogHeader);
+                    m_log.ErrorFormat("{0} Activate: failed to attach to plugin {1}", LogHeader, PluginName);
                 }
             }
             catch (Exception e)
             {
-                m_log.ErrorFormat("{0} Activate: exception {1}", LogHeader, e);
+                m_log.ErrorFormat("{0} Activate: exception attaching to plugin {1}: {2}", LogHeader, PluginName, e);
             }
 
             return ret;

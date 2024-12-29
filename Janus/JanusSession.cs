@@ -21,6 +21,7 @@ using OpenMetaverse.StructuredData;
 
 using log4net;
 using log4net.Core;
+using System.Reflection.Metadata;
 
 namespace WebRtcVoice
 {
@@ -43,6 +44,8 @@ namespace WebRtcVoice
 
         public string SessionId { get; private set; }
         public string SessionUri { get ; private set ; }
+
+        public string PluginId { get; set; }
 
         private HttpClient _HttpClient = new HttpClient();
 
@@ -112,22 +115,43 @@ namespace WebRtcVoice
             bool ret = false;
             try
             {
-                var resp = await SendToSession(new DestroySessionReq());
+                JanusMessageResp resp = await SendToSession(new DestroySessionReq());
                 if (resp is not null && resp.isSuccess)
                 {
                     // Note that setting IsConnected to false will cause the long poll to exit
-                    IsConnected = false;
                     m_log.DebugFormat("{0} DestroySession. Destroyed", LogHeader);
                 }
                 else
                 {
-                    m_log.ErrorFormat("{0} DestroySession: failed", LogHeader);
+                    if (resp.isError)
+                    {
+                        ErrorResp eResp = new ErrorResp(resp);
+                        switch (eResp.errorCode)
+                        {
+                            case 458:
+                                // This is the error code for a session that is already destroyed
+                                m_log.DebugFormat("{0} DestroySession: session already destroyed", LogHeader);
+                                break;
+                            case 459:
+                                // This is the error code for handle already destroyed
+                                m_log.DebugFormat("{0} DestroySession: Handle not found", LogHeader);
+                                break;
+                            default:
+                                m_log.ErrorFormat("{0} DestroySession: failed {1}", LogHeader, eResp.errorReason);
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        m_log.ErrorFormat("{0} DestroySession: failed. Resp: {1}", LogHeader, resp.ToString());
+                    }
                 }
             }
             catch (Exception e)
             {
                 m_log.ErrorFormat("{0} DestroySession: exception {1}", LogHeader, e);
             }
+            IsConnected = false;
 
             return ret;
         }
@@ -201,14 +225,7 @@ namespace WebRtcVoice
         /// <returns></returns>
         public async Task<JanusMessageResp> SendToJanus(JanusMessageReq pReq, string pURI)
         {
-            if (!String.IsNullOrEmpty(_JanusAPIToken))
-            {
-                pReq.AddAPIToken(_JanusAPIToken);
-            }
-            if (String.IsNullOrEmpty(pReq.TransactionId))
-            {
-                pReq.TransactionId = Guid.NewGuid().ToString();
-            }
+            AddJanusHeaders(pReq);
             // m_log.DebugFormat("{0} SendToJanus", LogHeader);
             if (_MessageDetails) m_log.DebugFormat("{0} SendToJanus. URI={1}, req={2}", LogHeader, pURI, pReq.ToJson());
 
@@ -275,6 +292,8 @@ namespace WebRtcVoice
         {
             JanusMessageResp ret = new JanusMessageResp();
 
+            AddJanusHeaders(pReq);
+
             try {
                 HttpRequestMessage reqMsg = new HttpRequestMessage(HttpMethod.Post, pURI);
                 string reqStr = pReq.ToJson();
@@ -294,6 +313,33 @@ namespace WebRtcVoice
         private async Task<JanusMessageResp> SendToJanusNoWait(JanusMessageReq pReq)
         {
             return await SendToJanusNoWait(pReq, SessionUri);
+        }
+
+        // There are various headers that are in most Janus requests. Add them here.
+        private void AddJanusHeaders(JanusMessageReq pReq)
+        {
+            // Authentication token
+            if (!String.IsNullOrEmpty(_JanusAPIToken))
+            {
+                pReq.AddAPIToken(_JanusAPIToken);
+            }
+            // Transaction ID that matches responses to requests
+            if (String.IsNullOrEmpty(pReq.TransactionId))
+            {
+                pReq.TransactionId = Guid.NewGuid().ToString();
+            }
+            // The following two are required for the WebSocket interface. They are optional for the
+            //     HTTP interface since the session and plugin handle are in the URL.
+            // SessionId is added to the message if not already there
+            if (!pReq.hasSessionId && !String.IsNullOrEmpty(SessionId))
+            {
+                pReq.AddSessionId(SessionId);
+            }
+            // HandleId connects to the plugin
+            if (!pReq.hasHandleId && !String.IsNullOrEmpty(PluginId))
+            {
+                pReq.AddHandleId(PluginId);
+            }
         }
 
         bool TryGetOutstandingRequest(string pTransactionId, out OutstandingRequest pOutstandingRequest)
@@ -464,6 +510,7 @@ namespace WebRtcVoice
                                         break;
                                     case "hangup":
                                         // The PeerConnection was closed, either by the user/application or by Janus itself;
+                                        // If one is in the room, when a "hangup" event happens, it means that the user left the room.
                                         m_log.DebugFormat("{0} EventLongPoll: hangup {1}", LogHeader, resp.ToString());
                                         OnHangup?.Invoke(eventResp);
                                         break;

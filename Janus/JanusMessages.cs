@@ -79,17 +79,26 @@ namespace WebRtcVoice
             m_message["apisecret"] = pToken;
         }
         // Note that the session_id is a long number in the JSON so we convert the string.
+        public string sessionId { 
+            get { return m_message.ContainsKey("session_id") ? m_message["session_id"].AsLong().ToString() : String.Empty; }
+            set { m_message["session_id"] = long.Parse(value); }
+        }
+        public bool hasSessionId { get { return m_message.ContainsKey("session_id"); } }
         public void AddSessionId(string pToken)
         {
-            m_message["session_id"] = long.Parse(pToken);
+            AddSessionId(long.Parse(pToken));
         }
         public void AddSessionId(long pToken)
         {
             m_message["session_id"] = pToken;
         }
+        public bool hasHandleId { get { return m_message.ContainsKey("handle_id"); } }
         public void AddHandleId(string pToken)
         {
-            m_message["handle_id"] = pToken;
+            m_message["handle_id"] = long.Parse(pToken);
+        }
+        public string sender {
+            get { return m_message.ContainsKey("sender") ? m_message["sender"] : String.Empty; }
         }
 
         public virtual string ToJson()
@@ -149,6 +158,7 @@ namespace WebRtcVoice
         // Check if a successful response code is in the response
         public virtual bool isSuccess { get { return CheckReturnCode("success"); } }
         public virtual bool isEvent { get { return CheckReturnCode("event"); } }
+        public virtual bool isError { get { return CheckReturnCode("error"); } }
         public virtual bool CheckReturnCode(string pCode)
         {
             return ReturnCode == pCode;
@@ -562,14 +572,6 @@ namespace WebRtcVoice
 
         public EventResp(JanusMessageResp pResp) : base(pResp.RawBody)
         {
-        }
-
-        public string sessionId { 
-            get { return m_message.ContainsKey("session_id") ? m_message["session_id"].AsLong().ToString() : String.Empty; }
-            set { m_message["session_id"] = long.Parse(value); }
-        }
-        public string sender {
-            get { return m_message.ContainsKey("sender") ? m_message["sender"] : String.Empty; }
         }
     }
     // ==============================================================

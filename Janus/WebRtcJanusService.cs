@@ -46,7 +46,10 @@ namespace WebRtcVoice
 
         public WebRtcJanusService(IConfigSource pConfig) : base(pConfig)
         {
-            _log.DebugFormat("{0} WebRtcJanusService constructor", LogHeader);
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            string version = assembly.GetName().Version?.ToString() ?? "unknown";
+
+            _log.DebugFormat("{0} WebRtcJanusService version {1}", LogHeader, version);
             _Config = pConfig;
             IConfig webRtcVoiceConfig = _Config.Configs["WebRtcVoice"];
 
