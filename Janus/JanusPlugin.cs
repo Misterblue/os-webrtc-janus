@@ -133,7 +133,7 @@ namespace WebRtcVoice
             }
 
             return ret;
-        }   
+        }
 
         public virtual void Handle_Event(JanusMessageResp pResp)
         {
