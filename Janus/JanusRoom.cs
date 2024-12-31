@@ -57,12 +57,13 @@ namespace WebRtcVoice
             bool ret = false;
             try
             {
+                // m_log.DebugFormat("{0} JoinRoom. New joinReq for room {1}", LogHeader, RoomId);
+
                 // Discovered that AudioBridge doesn't care if the data portion is present
                 //    and, if removed, the viewer complains that the "m=" sections are
                 //    out of order. Not "cleaning" (removing the data section) seems to work.
                 // string cleanSdp = CleanupSdp(pSdp);
                 var joinReq = new AudioBridgeJoinRoomReq(RoomId, pVSession.AgentId.ToString());
-                // m_log.DebugFormat("{0} JoinRoom. New joinReq for room {1}", LogHeader, RoomId);
                 // joinReq.SetJsep("offer", cleanSdp);
                 joinReq.SetJsep("offer", pVSession.Offer);
 

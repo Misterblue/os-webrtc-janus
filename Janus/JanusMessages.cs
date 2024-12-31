@@ -391,11 +391,15 @@ namespace WebRtcVoice
         // Get an integer value for a key in the response data or zero if not there
         public int PluginRespDataInt(string pKey)
         {
+            if (m_data is null)
+                return 0;
             return m_data.ContainsKey(pKey) ? (int)m_data[pKey].AsLong() : 0;
         }
         // Get a string value for a key in the response data or empty string if not there
         public string PluginRespDataString(string pKey)
         {
+            if (m_data is null)
+                return String.Empty;
             return m_data.ContainsKey(pKey) ? m_data[pKey].AsString() : String.Empty;
         }
     }

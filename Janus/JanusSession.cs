@@ -22,6 +22,7 @@ using OpenMetaverse.StructuredData;
 using log4net;
 using log4net.Core;
 using System.Reflection.Metadata;
+using System.Threading;
 
 namespace WebRtcVoice
 {
@@ -47,6 +48,7 @@ namespace WebRtcVoice
 
         public string PluginId { get; set; }
 
+        private CancellationTokenSource _CancelTokenSource = new CancellationTokenSource();
         private HttpClient _HttpClient = new HttpClient();
 
         public bool IsConnected { get; set; }
@@ -152,6 +154,7 @@ namespace WebRtcVoice
                 m_log.ErrorFormat("{0} DestroySession: exception {1}", LogHeader, e);
             }
             IsConnected = false;
+            _CancelTokenSource.Cancel();
 
             return ret;
         }
@@ -244,7 +247,7 @@ namespace WebRtcVoice
                 string reqStr = pReq.ToJson();
                 reqMsg.Content = new StringContent(reqStr, System.Text.Encoding.UTF8, MediaTypeNames.Application.Json);
                 reqMsg.Headers.Add("Accept", "application/json");
-                HttpResponseMessage response = await _HttpClient.SendAsync(reqMsg);
+                HttpResponseMessage response = await _HttpClient.SendAsync(reqMsg, _CancelTokenSource.Token);
 
                 if (response.IsSuccessStatusCode)
                 {
@@ -344,6 +347,12 @@ namespace WebRtcVoice
 
         bool TryGetOutstandingRequest(string pTransactionId, out OutstandingRequest pOutstandingRequest)
         {
+            if (String.IsNullOrEmpty(pTransactionId))
+            {
+                pOutstandingRequest = null;
+                return false;
+            }
+
             bool ret = false;
             lock (_OutstandingRequests)
             {
@@ -387,41 +396,51 @@ namespace WebRtcVoice
                 HttpResponseMessage response = null;
                 try
                 {
-                    response = await _HttpClient.SendAsync(reqMsg);
+                    response = await _HttpClient.SendAsync(reqMsg, _CancelTokenSource.Token);
+                    if (response is not null && response.IsSuccessStatusCode)
+                    {
+                        string respStr = await response.Content.ReadAsStringAsync();
+                        ret = JanusMessageResp.FromJson(respStr);
+                        // m_log.DebugFormat("{0} GetFromJanus: response {1}", LogHeader, respStr);
+                    }
+                    else
+                    {
+                        m_log.ErrorFormat("{0} GetFromJanus: response not successful {1}", LogHeader, response);
+                        var eResp = new ErrorResp("GETERROR");
+                        // Add the sessionId so the proper session can be shut down
+                        eResp.AddSessionId(SessionId);
+                        if (response is not null)
+                        {
+                            eResp.SetError((int)response.StatusCode, response.ReasonPhrase);
+                        }
+                        else
+                        {
+                            eResp.SetError(0, "Connection refused");
+                        }
+                        ret = eResp;
+                    }
+                }
+                catch (TaskCanceledException e)
+                {
+                    m_log.DebugFormat("{0} GetFromJanus: task canceled: {1}", LogHeader, e.Message);
+                    var eResp = new ErrorResp("GETERROR");
+                    eResp.SetError(499, "Task canceled");
+                    ret = eResp;
                 }
                 catch (Exception e)
                 {
                     m_log.ErrorFormat("{0} GetFromJanus: exception {1}", LogHeader, e.Message);
-                    response = null;
-                }
-
-                if (response is not null && response.IsSuccessStatusCode)
-                {
-                    string respStr = await response.Content.ReadAsStringAsync();
-                    ret = JanusMessageResp.FromJson(respStr);
-                    // m_log.DebugFormat("{0} GetFromJanus: response {1}", LogHeader, respStr);
-                }
-                else
-                {
-                    m_log.ErrorFormat("{0} GetFromJanus: response not successful {1}", LogHeader, response);
                     var eResp = new ErrorResp("GETERROR");
-                    // Add the sessionId so the proper session can be shut down
-                    eResp.AddSessionId(SessionId);
-                    if (response is not null)
-                    {
-                        eResp.SetError((int)response.StatusCode, response.ReasonPhrase);
-                    }
-                    else
-                    {
-                        eResp.SetError(0, "Connection refused");
-                    }
+                    eResp.SetError(400, "Exception: " + e.Message);
                     ret = eResp;
-
                 }
             }
             catch (Exception e)
             {
                 m_log.ErrorFormat("{0} GetFromJanus: exception {1}", LogHeader, e);
+                var eResp = new ErrorResp("GETERROR");
+                eResp.SetError(400, "Exception: " + e.Message);
+                ret = eResp;
             }
 
             return ret;
@@ -578,17 +597,22 @@ namespace WebRtcVoice
                                             case 404:
                                                 // "Not found" means there is a Janus server but the session is gone
                                                 m_log.ErrorFormat("{0} EventLongPoll: GETERROR {1}", LogHeader, resp.ToString());
-                                                OnDisconnect?.Invoke(eventResp);
-                                                // This will cause the long poll to exit
-                                                running = false;
+                                                break;
+                                            case 400:
+                                                // "Bad request" means the session is gone
+                                                m_log.ErrorFormat("{0} EventLongPoll: Bad Request {1}", LogHeader, resp.ToString());
+                                                break;
+                                            case 499:
+                                                // "Task canceled" means the long poll was canceled
+                                                m_log.DebugFormat("{0} EventLongPoll: Task canceled", LogHeader);
                                                 break;
                                             default:
                                                 m_log.DebugFormat("{0} EventLongPoll: unknown response {1}", LogHeader, resp.ToString());
-                                                OnDisconnect?.Invoke(eventResp);
-                                                // This will cause the long poll to exit
-                                                running = false;
                                                 break;
                                         }   
+                                        // This will cause the long poll to exit
+                                        running = false;
+                                        OnDisconnect?.Invoke(eventResp);
                                         break;
                                     default:
                                         m_log.DebugFormat("{0} EventLongPoll: unknown response {1}", LogHeader, resp.ToString());
