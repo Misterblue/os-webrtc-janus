@@ -12,24 +12,26 @@
 
 using System;
 using System.Reflection;
+using System.Threading.Tasks;
 
 using OpenSim.Framework;
-using OpenSim.Services.Interfaces;
 
 using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 
 using log4net;
 using Nini.Config;
-using System.Threading.Tasks;
 
 namespace WebRtcVoice
 {
-    public class WebRtcVoiceConnector : IWebRtcVoiceService
+    // Class that provides the local IWebRtcVoiceService interface to the XMLRPC Robust
+    //     server. This is used by the region servers to talk to the Robust server.
+    public class WebRtcVoiceServiceConnector : IWebRtcVoiceService
     {
         private static readonly ILog m_log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly string LogHeader = "[WEBRTC VOICE SERVICE CONNECTOR]";
 
-        public WebRtcVoiceConnector(IConfigSource config)
+        public WebRtcVoiceServiceConnector(IConfigSource config)
         {
             // Nothing to do
         }
@@ -60,4 +62,3 @@ namespace WebRtcVoice
         }
     }
 }
-

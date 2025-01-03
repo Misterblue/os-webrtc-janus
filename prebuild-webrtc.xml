@@ -24,6 +24,7 @@
       <Reference name="OpenSim.Services.Connectors"/>
       <Reference name="OpenSim.Services.Base"/>
       <Reference name="OpenSim.Server.Base"/>
+      <Reference name="OpenSim.Server.Handlers"/>
       <Reference name="OpenSim.Data"/>
 
       <Reference name="OpenMetaverse"/>
