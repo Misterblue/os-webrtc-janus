@@ -177,7 +177,7 @@ namespace WebRtcVoice
         // This is the logic that takes the client's request and converts it into
         //     operations on rooms in the audio bridge.
         // IWebRtcVoiceService.ProvisionVoiceAccountRequest
-        public async Task<OSDMap> ProvisionVoiceAccountRequest(IVoiceViewerSession pSession, OSDMap pRequest, UUID pUserID, IScene pScene)
+        public async Task<OSDMap> ProvisionVoiceAccountRequest(IVoiceViewerSession pSession, OSDMap pRequest, UUID pUserID, UUID pSceneID)
         {
             OSDMap ret = null;
             string errorMsg = null;
@@ -226,7 +226,7 @@ namespace WebRtcVoice
                     {
                         // The client is sending an offer. Find the right room and join it.
                         // _log.DebugFormat("{0} ProvisionVoiceAccountRequest: jsep type={1} sdp={2}", LogHeader, jsepType, jsepSdp);
-                        viewerSession.Room = await viewerSession.AudioBridge.SelectRoom(pScene.RegionInfo.RegionID.ToString(),
+                        viewerSession.Room = await viewerSession.AudioBridge.SelectRoom(pSceneID.ToString(),
                                                             channel_type, isSpatial, parcel_local_id, channel_id);
                         if (viewerSession.Room is null)
                         {
@@ -284,7 +284,7 @@ namespace WebRtcVoice
         }
 
         // IWebRtcVoiceService.VoiceAccountBalanceRequest
-        public async Task<OSDMap> VoiceSignalingRequest(IVoiceViewerSession pSession, OSDMap pRequest, UUID pUserID, IScene pScene)
+        public async Task<OSDMap> VoiceSignalingRequest(IVoiceViewerSession pSession, OSDMap pRequest, UUID pUserID, UUID pSceneID)
         {
             OSDMap ret = null;
             JanusViewerSession viewerSession = pSession as JanusViewerSession;
@@ -340,26 +340,26 @@ namespace WebRtcVoice
 
         // This module should not be invoked with this signature
         // IWebRtcVoiceService.ProvisionVoiceAccountRequest
-        public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, UUID pSceneID)
         {
             throw new NotImplementedException();
         }
 
         // This module should not be invoked with this signature
         // IWebRtcVoiceService.VoiceSignalingRequest
-        public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, UUID pSceneID)
         {
             throw new NotImplementedException();
         }
 
         // The viewer session object holds all the connection information to Janus.
         // IWebRtcVoiceService.CreateViewerSession
-        public IVoiceViewerSession CreateViewerSession(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public IVoiceViewerSession CreateViewerSession(OSDMap pRequest, UUID pUserID, UUID pSceneID)
         {
             return new JanusViewerSession(this)
             {
                 AgentId = pUserID,
-                RegionId = pScene.RegionInfo.RegionID
+                RegionId = pSceneID
             };
         }
 

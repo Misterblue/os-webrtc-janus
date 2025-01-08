@@ -14,11 +14,29 @@ using System.Linq;
 using System.Collections.Generic;
 
 using OpenMetaverse;
+using System.Threading.Tasks;
 
 namespace WebRtcVoice
 {
-    public static class VoiceViewerSession
+    public class VoiceViewerSession : IVoiceViewerSession
     {
+
+        // A simple session structure that is used when the connection is actually in the
+        //    remote service.
+        public VoiceViewerSession(IWebRtcVoiceService pVoiceService, UUID pRegionId, UUID pAgentId)
+        {
+            RegionId = pRegionId;
+            AgentId = pAgentId;
+            ViewerSessionID = UUID.Random().ToString();
+            VoiceService = pVoiceService;
+            
+        }
+        public string ViewerSessionID { get; set; }
+        public IWebRtcVoiceService VoiceService { get ; set; }
+        public string VoiceServiceSessionId { get => throw new System.NotImplementedException(); set => throw new System.NotImplementedException(); }
+        public UUID RegionId { get ; set; }
+        public UUID AgentId { get ; set; }
+
         // =====================================================================
         // ViewerSessions hold the connection information for the client connection through to the voice service.
         // This collection is static and is simulator wide so there will be sessions for all regions and all clients.
@@ -70,6 +88,26 @@ namespace WebRtcVoice
             }
         }
 
+        // Update a ViewSession from one ID to another.
+        // Remove the old session ID from the ViewerSessions collection, update the
+        //     sessionID value in  the IVoiceViewerSession, and add the session back to the
+        //     collection.
+        // This is used in the kludge to synchronize a region's ViewerSessionID with the
+        //     remote VoiceService's session ID.
+        public static void UpdateViewerSessionId(IVoiceViewerSession pSession, string pNewSessionId)
+        {
+            lock (ViewerSessions)
+            {
+                ViewerSessions.Remove(pSession.ViewerSessionID);
+                pSession.ViewerSessionID = pNewSessionId;
+                ViewerSessions[pSession.ViewerSessionID] = pSession;
+            }
+        }
+
+        public Task Shutdown()
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }
 

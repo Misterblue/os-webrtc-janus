@@ -223,13 +223,10 @@ namespace WebRtcVoice
                 {
                     OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
                     if (_MessageDetails) m_log.DebugFormat("{0}[ProvisionVoice]: Request: {1}", logHeader, tmp.ToString());
-
-                    if (tmp is OSDMap)
-                    {
-                        map = (OSDMap)tmp;
-                    }
+                    map = tmp as OSDMap;
                 }
             }
+
             if (map is null)
             {
                 m_log.ErrorFormat("{0}[ProvisionVoice]: No request data found. Agent={1}", logHeader, agentID.ToString());
@@ -258,7 +255,7 @@ namespace WebRtcVoice
             }
 
             // The checks passed. Send the request to the voice service.
-            OSDMap resp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene).Result;
+            OSDMap resp = voiceService.ProvisionVoiceAccountRequest(map, agentID, scene.RegionInfo.RegionID).Result;
 
             if (_MessageDetails) m_log.DebugFormat("{0}[ProvisionVoice]: response: {1}", logHeader, resp.ToString());
 
@@ -288,7 +285,7 @@ namespace WebRtcVoice
                 if (inputStream.Length > 0)
                 {
                     OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
-                    if (_MessageDetails) m_log.DebugFormat("{0}[VoiceSignaling]: Request: {1}", logHeader, tmp.ToString());
+                    if (_MessageDetails) m_log.DebugFormat("{0}[VoiceSignalingRequest]: Request: {1}", logHeader, tmp.ToString());
 
                     if (tmp is OSDMap)
                     {
@@ -298,7 +295,7 @@ namespace WebRtcVoice
             }
             if (map is null)
             {
-                m_log.ErrorFormat("{0}[VoiceSignaling]: No request data found. Agent={1}", logHeader, agentID.ToString());
+                m_log.ErrorFormat("{0}[VoiceSignalingRequest]: No request data found. Agent={1}", logHeader, agentID.ToString());
                 response.StatusCode = (int)HttpStatusCode.NoContent;
                 return;
             }
@@ -321,9 +318,10 @@ namespace WebRtcVoice
                 return;
             }
 
-            OSDMap resp = voiceService.VoiceSignalingRequest(map, agentID, scene).Result;
+            OSDMap resp = voiceService.VoiceSignalingRequest(map, agentID, scene.RegionInfo.RegionID).Result;
+            if (_MessageDetails) m_log.DebugFormat("{0}[VoiceSignalingRequest]: Response: {1}", logHeader, resp);
 
-            // TODO: check for erros and package the response
+            // TODO: check for errors and package the response
 
             response.StatusCode = (int)HttpStatusCode.OK;
             response.RawBuffer = Util.UTF8.GetBytes("<llsd><undef /></llsd>");

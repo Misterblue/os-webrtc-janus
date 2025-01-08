@@ -243,8 +243,9 @@ namespace WebRtcVoice
                 };
                 _OutstandingRequests.Add(pReq.TransactionId, outReq);
 
-                HttpRequestMessage reqMsg = new HttpRequestMessage(HttpMethod.Post, pURI);
                 string reqStr = pReq.ToJson();
+
+                HttpRequestMessage reqMsg = new HttpRequestMessage(HttpMethod.Post, pURI);
                 reqMsg.Content = new StringContent(reqStr, System.Text.Encoding.UTF8, MediaTypeNames.Application.Json);
                 reqMsg.Headers.Add("Accept", "application/json");
                 HttpResponseMessage response = await _HttpClient.SendAsync(reqMsg, _CancelTokenSource.Token);

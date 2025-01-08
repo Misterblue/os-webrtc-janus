@@ -75,7 +75,7 @@ namespace WebRtcVoice
                     sharedModule.Initialise(pConfig);
 
                     // Now that we have someone to handle the requests, we can set up the handlers
-                    pServer.AddJsonRPCHandler("voice_provision_voice_account_request", Handle_ProvisionVoiceAccountRequest);
+                    pServer.AddJsonRPCHandler("provision_voice_account_request", Handle_ProvisionVoiceAccountRequest);
                     pServer.AddJsonRPCHandler("voice_signaling_request", Handle_VoiceSignalingRequest);
                 }
             }
@@ -83,28 +83,75 @@ namespace WebRtcVoice
 
         private bool Handle_ProvisionVoiceAccountRequest(OSDMap pJson, ref JsonRpcResponse pResponse)
         {
+            bool ret = false;
             m_log.DebugFormat("{0} Handle_ProvisionVoiceAccountRequest", LogHeader);
             if (m_MessageDetails) m_log.DebugFormat("{0} PVAR: req={1}", LogHeader, pJson.ToString());
 
-            OSDMap resp = m_WebRtcVoiceService.ProvisionVoiceAccountRequest(pJson, UUID.Zero, null).Result;
-            pResponse = new JsonRpcResponse();
-            pResponse.Result = resp;
-            if (m_MessageDetails) m_log.DebugFormat("{0} PVAR: resp={1}", LogHeader, resp.ToString());
+            if (pJson.ContainsKey("params") && pJson["params"] is OSDMap paramsMap)
+            {
+                OSDMap request = paramsMap.ContainsKey("request") ? paramsMap["request"] as OSDMap : null;
+                UUID userID = paramsMap.ContainsKey("userID") ? paramsMap["userID"].AsUUID() : UUID.Zero;
+                UUID sceneID = paramsMap.ContainsKey("scene") ? paramsMap["scene"].AsUUID() : UUID.Zero;
 
-            return true;
+                try
+                {
+                    if (m_WebRtcVoiceService is null)
+                    {
+                        m_log.ErrorFormat("{0} PVAR: no local service", LogHeader);
+                        return false;
+                    }
+                    OSDMap resp = m_WebRtcVoiceService.ProvisionVoiceAccountRequest(request, userID, sceneID).Result;
+
+                    pResponse = new JsonRpcResponse();
+                    pResponse.Result = resp;
+                    if (m_MessageDetails) m_log.DebugFormat("{0} PVAR: resp={1}", LogHeader, resp.ToString());
+                    ret = true;
+                }
+                catch (Exception e)
+                {
+                    m_log.ErrorFormat("{0} PVAR: exception {1}", LogHeader, e);
+                }   
+            }
+            else
+            {
+                m_log.ErrorFormat("{0} PVAR: missing parameters", LogHeader);
+            }
+            return ret;
         }
 
         private bool Handle_VoiceSignalingRequest(OSDMap pJson, ref JsonRpcResponse pResponse)
         {
-            m_log.DebugFormat("{0} Handle_VoiceSignalingRequest", LogHeader);
-            if (m_MessageDetails) m_log.DebugFormat("{0} VSR: req={1}", LogHeader, pJson.ToString());
+            bool ret = false;
+            if (pJson.ContainsKey("params") && pJson["params"] is OSDMap paramsMap)
+            {
+                m_log.DebugFormat("{0} Handle_VoiceSignalingRequest", LogHeader);
+                if (m_MessageDetails) m_log.DebugFormat("{0} VSR: req={1}", LogHeader, paramsMap.ToString());
 
-            OSDMap resp = m_WebRtcVoiceService.VoiceSignalingRequest(pJson, UUID.Zero, null).Result;
-            pResponse = new JsonRpcResponse();
-            pResponse.Result = resp;
-            if (m_MessageDetails) m_log.DebugFormat("{0} VSR: resp={1}", LogHeader, resp.ToString());
+                OSDMap request = paramsMap.ContainsKey("request") ? paramsMap["request"] as OSDMap : null;
+                UUID userID = paramsMap.ContainsKey("userID") ? paramsMap["userID"].AsUUID() : UUID.Zero;
+                UUID sceneID = paramsMap.ContainsKey("scene") ? paramsMap["scene"].AsUUID() : UUID.Zero;
 
-            return true;
+                try
+                {
+                    OSDMap resp = m_WebRtcVoiceService.VoiceSignalingRequest(request, userID, sceneID).Result;
+
+                    pResponse = new JsonRpcResponse();
+                    pResponse.Result = resp;
+                    if (m_MessageDetails) m_log.DebugFormat("{0} VSR: resp={1}", LogHeader, resp.ToString());
+
+                    ret = true;
+                }
+                catch (Exception e)
+                {
+                    m_log.ErrorFormat("{0} VSR: exception {1}", LogHeader, e);
+                }
+            }
+            else
+            {
+                m_log.ErrorFormat("{0} VSR: missing parameters", LogHeader);
+            }
+
+            return ret;
         }
     }
 }

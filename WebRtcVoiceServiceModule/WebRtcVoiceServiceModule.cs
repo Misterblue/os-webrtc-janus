@@ -200,7 +200,7 @@ namespace WebRtcVoice
         // IWebRtcVoiceService
 
         // IWebRtcVoiceService.ProvisionVoiceAccountRequest
-        public async Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public async Task<OSDMap> ProvisionVoiceAccountRequest(OSDMap pRequest, UUID pUserID, UUID pSceneID)
         {
             OSDMap response = null;
             IVoiceViewerSession vSession = null;
@@ -222,13 +222,13 @@ namespace WebRtcVoice
                     if (channelType == "local")
                     {
                         // TODO: check if this userId is making a new session (case that user is reconnecting)
-                        vSession = m_spatialVoiceService.CreateViewerSession(pRequest, pUserID, pScene);
+                        vSession = m_spatialVoiceService.CreateViewerSession(pRequest, pUserID, pSceneID);
                         VoiceViewerSession.AddViewerSession(vSession);
                     }
                     else
                     {
                         // TODO: check if this userId is making a new session (case that user is reconnecting)
-                        vSession = m_nonSpatialVoiceService.CreateViewerSession(pRequest, pUserID, pScene);
+                        vSession = m_nonSpatialVoiceService.CreateViewerSession(pRequest, pUserID, pSceneID);
                         VoiceViewerSession.AddViewerSession(vSession);
                     }
                 }
@@ -239,13 +239,13 @@ namespace WebRtcVoice
             }
             if (vSession is not null)
             {
-                response = await vSession.VoiceService.ProvisionVoiceAccountRequest(vSession, pRequest, pUserID, pScene);
+                response = await vSession.VoiceService.ProvisionVoiceAccountRequest(vSession, pRequest, pUserID, pSceneID);
             }
             return response;
         }
 
         // IWebRtcVoiceService.VoiceSignalingRequest
-        public async Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public async Task<OSDMap> VoiceSignalingRequest(OSDMap pRequest, UUID pUserID, UUID pSceneID)
         {
             OSDMap response = null;
             IVoiceViewerSession vSession = null;
@@ -255,7 +255,7 @@ namespace WebRtcVoice
                 string viewerSessionId = pRequest["viewer_session"].AsString();
                 if (VoiceViewerSession.TryGetViewerSession(viewerSessionId, out vSession))
                 {
-                    response = await vSession.VoiceService.VoiceSignalingRequest(vSession, pRequest, pUserID, pScene);
+                    response = await vSession.VoiceService.VoiceSignalingRequest(vSession, pRequest, pUserID, pSceneID);
                 }
                 else
                 {
@@ -270,18 +270,18 @@ namespace WebRtcVoice
         }
 
         // This module should never be called with this signature
-        public Task<OSDMap> ProvisionVoiceAccountRequest(IVoiceViewerSession pVSession, OSDMap pRequest, UUID pUserID, IScene pScene)
+        public Task<OSDMap> ProvisionVoiceAccountRequest(IVoiceViewerSession pVSession, OSDMap pRequest, UUID pUserID, UUID pSceneID)
         {
             throw new NotImplementedException();
         }
 
         // This module should never be called with this signature
-        public Task<OSDMap> VoiceSignalingRequest(IVoiceViewerSession pVSession, OSDMap pRequest, UUID pUserID, IScene pScene)
+        public Task<OSDMap> VoiceSignalingRequest(IVoiceViewerSession pVSession, OSDMap pRequest, UUID pUserID, UUID pSceneID)
         {
             throw new NotImplementedException();
         }
 
-        public IVoiceViewerSession CreateViewerSession(OSDMap pRequest, UUID pUserID, IScene pScene)
+        public IVoiceViewerSession CreateViewerSession(OSDMap pRequest, UUID pUserID, UUID pSceneID)
         {
             throw new NotImplementedException();
         }
