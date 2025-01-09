@@ -26,6 +26,21 @@ Instructions for:
 - [Configure Standalone Region](#Configure_Standalone)
 - [Managing Voice Service](#Managing_Voice) (console commands, etc)
 
+**Note**: as of January 2024, this solution does not provide true spatial
+voice service using Janus. There are people working on additions to Janus
+to provide this but the existing solution provides only non-spatial
+voice services using the `AudioBridge` Janus plugin. Additionally,
+features like muting and individual avatar volume are not yet implemented.
+
+<a id="Known_Issues"></a>
+## Known Issues
+
+- No spatial audio
+- One can see your own "white dot" but you don't see other avatar's white dots
+- No muting
+- No individual volume control
+
+And probably more found at [os-webrtc-janus issues](https://github.com/Misterblue/os-webrtc-janus/issues).
 
 <a id="Building"></a>
 ## Building Plugin into OpenSimulator
@@ -108,7 +123,7 @@ voice services. For this configuration, `os-webrtc-janus.ini` would look like:
 This directs both spatial and non-spatial voice to the grid service connector
 and `WebRtcVoiceServerURI` points to the configured Robust grid service.
 
-This is no need for a `[JanusWebRtcVoice]` section because all that is handled by the grid services.
+There is no need for a `[JanusWebRtcVoice]` section because all that is handled by the grid services.
 
 #### Local Simulator Janus Service
 
@@ -142,7 +157,7 @@ contains just sample entries.
 <a id="Configure_Robust"></a>
 ## Configure Robust Server for WebRTC Voice
 
-For the grid services side, `os-webrtc-janus` is configured as an additional module
+For the grid services side, `os-webrtc-janus` is configured as an additional service
 in the Robust OpenSimulator server. The additions to `Robust.ini` are:
 
 ```
@@ -168,17 +183,48 @@ This adds `VoiceServiceConnector` to the list of services presented by this Robu
 and adds the WebRtcVoice configuration that says to do both spatial and non-spatial voice
 using the Janus server, and the configuration for the Janus server itself.
 
-It is possible to configure multiple Robust service to distribute the load of services
-and a Robust server that only has `VoiceServiceConnector` in its ServiceList is possible.
+One can configure multiple Robust services to distribute the load of services
+and a Robust server with only `VoiceServiceConnector` in its ServiceList is possible.
 
 <a id="Configure_Standalone"></a>
 ## Configure Standalone Region
 
+[OpenSimulator] can be run "standalone" where all the grid services and regions are
+run in one simulator instance. Adding voice to this configuration is sometimes useful
+for very private meetings or testing. For this configuration, a Janus server is set up
+and the standalone simulator is configured to point all voice to that Janus server:
+
+```
+[WebRtcVoice]
+    Enabled = true
+    SpatialVoiceService = WebRtcJanusService.dll:WebRtcJanusService
+    NonSpatialVoiceService = WebRtcJanusService.dll:WebRtcJanusService
+    WebRtcVoiceServerURI = ${Const|PrivURL}:${Const|PrivatePort}
+[JanusWebRtcVoice]
+    JanusGatewayURI = http://janus.example.org:14223/voice
+    APIToken = APITokenToNeverCheckIn
+    JanusGatewayAdminURI = http://janus.example.org/admin
+    AdminAPIToken = AdminAPITokenToNeverCheckIn
+```
+
+This directs both spatial and non-spatial voice to the Janus server
+and configures the URI address of  the Janus server and the API access
+keys for that server.
+
 <a id="Managing_Voice"></a>
 ## Managing Voice (Console commands)
 
+There are a few console commands for checking on and controlling the voice system.
+The current list of commands for the simulator can be listed with the
+console command `help webrtc`.
 
+This is a growing section and will be added to over time.
 
+**webrtc list sessions** -- not implemented
+
+**janus info** -- list many details of the Janus-Gateway configuration. Very ugly, non-formated JSON.
+
+**janus list rooms** -- list the rooms that have been allocated in the `AudioBridge` Janus plugin
 
 [SecondLife WebRTC Voice]: https://wiki.secondlife.com/wiki/WebRTC_Voice
 [OpenSimulator]: http://opensimulator.org
