@@ -80,7 +80,7 @@ namespace WebRtcVoice
         }
         // Note that the session_id is a long number in the JSON so we convert the string.
         public string sessionId { 
-            get { return m_message.ContainsKey("session_id") ? m_message["session_id"].AsLong().ToString() : String.Empty; }
+            get { return m_message.ContainsKey("session_id") ? OSDToLong(m_message["session_id"]).ToString() : String.Empty; }
             set { m_message["session_id"] = long.Parse(value); }
         }
         public bool hasSessionId { get { return m_message.ContainsKey("session_id"); } }
@@ -108,6 +108,47 @@ namespace WebRtcVoice
         public override string ToString()
         {
             return m_message.ToString();
+        }
+        // Utility function to convert an OSD object to an long. The OSD object can be an OSDInteger
+        //    or an OSDArray of 4 or 8 integers. 
+        // This exists because the JSON to OSD parser can return an OSDArray for a long number
+        //    since there is not an OSDLong type.
+        // The design of the OSD conversion functions kinda needs one to know how the number
+        //    is stored in order to extract it. Like, if it's stored as a long value (8 bytes)
+        //    and one fetches it with .AsInteger(), it will return the first 4 bytes as an integer
+        //    and not the long value. So this function looks at the type of the OSD object and
+        //    extracts the number appropriately.
+        public long OSDToLong(OSD pIn)
+        {
+            long ret = 0;
+            switch (pIn.Type)
+            {
+                case OSDType.Integer:
+                    ret = (long)(pIn as OSDInteger).AsInteger();
+                    break;
+                case OSDType.Binary:
+                    byte[] value = (pIn as OSDBinary).value;
+                    if (value.Length == 4)
+                    {
+                        ret = (long)(pIn as OSDBinary).AsInteger();
+                    }
+                    if (value.Length == 8)
+                    {
+                        ret = (pIn as OSDBinary).AsLong();
+                    }
+                    break;
+                case OSDType.Array:
+                    if ((pIn as OSDArray).Count == 4)
+                    {
+                        ret = (long)pIn.AsInteger();
+                    }
+                    if ((pIn as OSDArray).Count == 8)
+                    {
+                        ret = pIn.AsLong();
+                    }
+                    break;
+            }
+            return ret;
         }
     }
     // ==============================================================
@@ -210,7 +251,7 @@ namespace WebRtcVoice
             {
                 var err = m_message["error"];
                 if (err is OSDMap)
-                    ret = (int)(err as OSDMap)["code"].AsLong();
+                    ret = (int)OSDToLong((err as OSDMap)["code"]);
             }
             return ret;
         }}
@@ -245,7 +286,7 @@ namespace WebRtcVoice
             //    and the ODMap conversion interprets it as a long (OSDLong).
             // If one just does a "ToString()" on the OSD object, you
             //    get an interpretation of the binary value.
-            return dataSection.ContainsKey("id") ? dataSection["id"].AsLong().ToString() : String.Empty;
+            return dataSection.ContainsKey("id") ? OSDToLong(dataSection["id"]).ToString() : String.Empty;
         }}  
     }
     // ==============================================================
@@ -290,7 +331,7 @@ namespace WebRtcVoice
         public AttachPluginResp(JanusMessageResp pResp) : base(pResp.RawBody)
         { }
         public string pluginId { get {
-            return dataSection.ContainsKey("id") ? dataSection["id"].AsLong().ToString() : String.Empty;
+            return dataSection.ContainsKey("id") ? OSDToLong(dataSection["id"]).ToString() : String.Empty;
         }}
     }
     // ==============================================================
@@ -378,7 +419,7 @@ namespace WebRtcVoice
             {
                 // Move the plugin data up into the m_data var so it is easier to get to
                 m_pluginData = m_message["plugindata"] as OSDMap;
-                if (m_pluginData.ContainsKey("data"))
+                if (m_pluginData is not null && m_pluginData.ContainsKey("data"))
                 {
                     m_data = m_pluginData["data"] as OSDMap;
                     // m_log.DebugFormat("{0} AudioBridgeResp. Found both plugindata and data: data={1}", LogHeader, m_data.ToString());
@@ -393,7 +434,7 @@ namespace WebRtcVoice
         {
             if (m_data is null)
                 return 0;
-            return m_data.ContainsKey(pKey) ? (int)m_data[pKey].AsLong() : 0;
+            return m_data.ContainsKey(pKey) ? (int)OSDToLong(m_data[pKey]) : 0;
         }
         // Get a string value for a key in the response data or empty string if not there
         public string PluginRespDataString(string pKey)
