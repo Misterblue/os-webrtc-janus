@@ -22,6 +22,7 @@ using OpenMetaverse;
 
 using Nini.Config;
 using log4net;
+using System.Numerics;
 
 namespace WebRtcVoice
 {
@@ -128,6 +129,8 @@ namespace WebRtcVoice
                 if (await audioBridge.Activate(_Config))
                 {
                     _log.DebugFormat("{0} AudioBridgePluginHandle created", LogHeader);
+                    // Save the plugin ID in the session so it can be used for filling message headers
+                    janusSession.PluginId = audioBridge.PluginId;
                     // Requests through the capabilities will create rooms
                 }
                 else
@@ -400,36 +403,33 @@ namespace WebRtcVoice
                 var resp = await ab.SendAudioBridgeMsg(new AudioBridgeListRoomsReq());
                 if (resp is not null && resp.isSuccess)
                 {
-                    if (resp.PluginRespData.TryGetValue("list", out OSD list))
+                    var abResp = new AudioBridgeListRoomsResp(resp);
+                    var roomList = abResp.Rooms;
+                    MainConsole.Instance.Output("");
+                    MainConsole.Instance.Output(
+                        "  {0,10} {1,48} {2,5} {3,10} {4,7} {5,7}",
+                        "Room", "Description", "Num", "SampleRate", "Spatial", "Recording");
+
+                    foreach (var room in roomList)
                     {
-                        MainConsole.Instance.Output("");
+                        int roomId = (int)long.Parse(room["room"]);
                         MainConsole.Instance.Output(
-                            "  {0,10} {1,15} {2,5} {3,10} {4,7} {5,7}",
-                            "Room", "Description", "Num", "SampleRate", "Spatial", "Recording");
-                        foreach (OSDMap room in list as OSDArray)
+                            "  {0,10} {1,48} {2,5} {3,10} {4,7} {5,7}",
+                            room["room"], room["description"], room["num_participants"],
+                            room["sampling_rate"], room["spatial_audio"], room["record"]);
+
+                        var lpResp = await ab.SendAudioBridgeMsg(new AudioBridgeListParticipantsReq(roomId));
+                        if (lpResp is not null && lpResp.AudioBridgeReturnCode == "participants")
                         {
-                            MainConsole.Instance.Output(
-                                "  {0,10} {1,15} {2,5} {3,10} {4,7} {5,7}",
-                                room["room"], room["description"], room["num_participants"],
-                                room["sampling_rate"], room["spatial_audio"], room["record"]);
-                            var participantResp = await ab.SendAudioBridgeMsg(new AudioBridgeListParticipantsReq(room["room"].AsInteger()));
-                            if (participantResp is not null && participantResp.AudioBridgeReturnCode == "participants")
+                            var participantsResp = new AudioBridgeListParticipantsResp(lpResp);
+
+                            foreach (var participant in participantsResp.Participants)
                             {
-                                if (participantResp.PluginRespData.TryGetValue("participants", out OSD participants))
-                                {
-                                    foreach (OSDMap participant in participants as OSDArray)
-                                    {
-                                        MainConsole.Instance.Output("      {0}/{1},muted={2},talking={3},pos={4}",
-                                            participant["id"].AsLong(), participant["display"], participant["muted"],
-                                            participant["talking"], participant["spatial_position"]);
-                                    }
-                                }
+                                MainConsole.Instance.Output("      {0}/{1},muted={2},talking={3},pos={4}",
+                                    participant["id"], participant["display"], participant["muted"],
+                                    participant["talking"], participant["spatial_position"]);
                             }
                         }
-                    }
-                    else
-                    {
-                        MainConsole.Instance.Output("No rooms");
                     }
                 }
                 else

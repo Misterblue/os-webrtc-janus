@@ -20,8 +20,6 @@ using System.Threading.Tasks;
 using OpenMetaverse.StructuredData;
 
 using log4net;
-using log4net.Core;
-using System.Reflection.Metadata;
 using System.Threading;
 
 namespace WebRtcVoice
@@ -488,7 +486,7 @@ namespace WebRtcVoice
         {
             bool running = true;
 
-            m_log.DebugFormat("{0} EventLongPoll", LogHeader);
+            if (_MessageDetails) m_log.DebugFormat("{0} EventLongPoll", LogHeader);
             Task.Run(async () => {
                 while (running && IsConnected)
                 {
@@ -526,7 +524,7 @@ namespace WebRtcVoice
                                         break;
                                     case "webrtcup":
                                         //  ICE and DTLS succeeded, and so Janus correctly established a PeerConnection with the user/application;
-                                        m_log.DebugFormat("{0} EventLongPoll: webrtcup {1}", LogHeader, resp.ToString());
+                                        if (_MessageDetails) m_log.DebugFormat("{0} EventLongPoll: webrtcup {1}", LogHeader, resp.ToString());
                                         break;
                                     case "hangup":
                                         // The PeerConnection was closed, either by the user/application or by Janus itself;
@@ -536,12 +534,12 @@ namespace WebRtcVoice
                                         break;
                                     case "detached":
                                         // a plugin asked the core to detach one of our handles
-                                        m_log.DebugFormat("{0} EventLongPoll: event {1}", LogHeader, resp.ToString());
+                                        m_log.DebugFormat("{0} EventLongPoll: detached {1}", LogHeader, resp.ToString());
                                         OnDetached?.Invoke(eventResp);
                                         break;
                                     case "media":
                                         // Janus is receiving (receiving: true/false) audio/video (type: "audio/video") on this PeerConnection;
-                                        m_log.DebugFormat("{0} EventLongPoll: media {1}", LogHeader, resp.ToString());
+                                        if (_MessageDetails) m_log.DebugFormat("{0} EventLongPoll: media {1}", LogHeader, resp.ToString());
                                         break;
                                     case "slowlink":
                                         // Janus detected a slowlink (uplink: true/false) on this PeerConnection;
