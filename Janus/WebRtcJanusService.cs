@@ -100,7 +100,6 @@ namespace WebRtcVoice
         //    my Janus are per-session, the other sessions will be created by the viewer requests.
         private void StartConnectionToJanus()
         {
-            _log.DebugFormat("{0} StartConnectionToJanus", LogHeader);
             Task.Run(async () =>
             {
                 _ViewerSession = new JanusViewerSession(this);
@@ -113,7 +112,6 @@ namespace WebRtcVoice
             JanusSession janusSession = new JanusSession(_JanusServerURI, _JanusAPIToken, _JanusAdminURI, _JanusAdminToken, _MessageDetails);
             if (await janusSession.CreateSession())
             {
-                _log.DebugFormat("{0} JanusSession created", LogHeader);
                 janusSession.OnDisconnect += Handle_Hangup;
 
                 // Once the session is created, create a handle to the plugin for rooms
@@ -378,8 +376,10 @@ namespace WebRtcVoice
                     "janus list rooms",
                     "List the rooms on the Janus server",
                     HandleJanusListRooms);
-                // List rooms
-                // List participants in a room
+                MainConsole.Instance.Commands.AddCommand("Webrtc", false, "janus list sessions",
+                    "janus list sessions",
+                    "List the sessions on the Janus server",
+                    HandleJanusListSessions);
             }
         }
 
@@ -391,7 +391,7 @@ namespace WebRtcVoice
                 string infoURI = _ViewerSession.Session.JanusServerURI + "/info";
                 var resp = await _ViewerSession.Session.GetFromJanus(infoURI);
                 if (resp is not null)
-                    MainConsole.Instance.Output(resp.ToJson());
+                    WriteOut(resp.ToJson());
             }
         }
 
@@ -405,15 +405,15 @@ namespace WebRtcVoice
                 {
                     var abResp = new AudioBridgeListRoomsResp(resp);
                     var roomList = abResp.Rooms;
-                    MainConsole.Instance.Output("");
-                    MainConsole.Instance.Output(
+                    WriteOut("");
+                    WriteOut(
                         "  {0,10} {1,48} {2,5} {3,10} {4,7} {5,7}",
                         "Room", "Description", "Num", "SampleRate", "Spatial", "Recording");
 
                     foreach (var room in roomList)
                     {
                         int roomId = (int)long.Parse(room["room"]);
-                        MainConsole.Instance.Output(
+                        WriteOut(
                             "  {0,10} {1,48} {2,5} {3,10} {4,7} {5,7}",
                             room["room"], room["description"], room["num_participants"],
                             room["sampling_rate"], room["spatial_audio"], room["record"]);
@@ -425,7 +425,7 @@ namespace WebRtcVoice
 
                             foreach (var participant in participantsResp.Participants)
                             {
-                                MainConsole.Instance.Output("      {0}/{1},muted={2},talking={3},pos={4}",
+                                WriteOut("      {0}/{1},muted={2},talking={3},pos={4}",
                                     participant["id"], participant["display"], participant["muted"],
                                     participant["talking"], participant["spatial_position"]);
                             }
@@ -434,9 +434,12 @@ namespace WebRtcVoice
                 }
                 else
                 {
-                    MainConsole.Instance.Output("Failed to get room list");
+                    WriteOut("Failed to get room list");
                 }
             }
+        }
+        private async void HandleJanusListSessions(string module, string[] cmdparms)
+        {
         }
 
         private void WriteOut(string msg, params object[] args)
@@ -444,7 +447,5 @@ namespace WebRtcVoice
             // m_log.InfoFormat(msg, args);
             MainConsole.Instance.Output(msg, args);
         }
-
-
     }
  }
