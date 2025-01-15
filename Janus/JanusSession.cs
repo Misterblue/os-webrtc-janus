@@ -597,18 +597,21 @@ namespace WebRtcVoice
                                         {
                                             case 404:
                                                 // "Not found" means there is a Janus server but the session is gone
-                                                m_log.ErrorFormat("{0} EventLongPoll: GETERROR {1}", LogHeader, resp.ToString());
+                                                m_log.ErrorFormat("{0} EventLongPoll: GETERROR Not Found. URI={1}: {2}",
+                                                            LogHeader, SessionUri, resp.ToString());
                                                 break;
                                             case 400:
                                                 // "Bad request" means the session is gone
-                                                m_log.ErrorFormat("{0} EventLongPoll: Bad Request {1}", LogHeader, resp.ToString());
+                                                m_log.ErrorFormat("{0} EventLongPoll: Bad Request. URI={1}: {2}",
+                                                            LogHeader, SessionUri, resp.ToString());
                                                 break;
                                             case 499:
                                                 // "Task canceled" means the long poll was canceled
-                                                m_log.DebugFormat("{0} EventLongPoll: Task canceled", LogHeader);
+                                                m_log.DebugFormat("{0} EventLongPoll: Task canceled. URI={1}", LogHeader, SessionUri);
                                                 break;
                                             default:
-                                                m_log.DebugFormat("{0} EventLongPoll: unknown response {1}", LogHeader, resp.ToString());
+                                                m_log.DebugFormat("{0} EventLongPoll: unknown response. URI={1}: {2}",
+                                                            LogHeader, SessionUri, resp.ToString());
                                                 break;
                                         }   
                                         // This will cause the long poll to exit

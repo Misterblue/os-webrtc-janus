@@ -44,7 +44,6 @@ namespace WebRtcVoice
         // Wrapper around the session connection to Janus-gateway
         public JanusPlugin(JanusSession pSession, string pPluginName)
         {
-            m_log.DebugFormat("{0} JanusPlugin constructor", LogHeader);
             _JanusSession = pSession;
             PluginName = pPluginName;
         }

@@ -41,7 +41,6 @@ namespace WebRtcVoice
         // Wrapper around the session connection to Janus-gateway
         public JanusRoom(JanusPlugin pAudioBridge, int pRoomId)
         {
-            m_log.DebugFormat("{0} JanusRoom constructor", LogHeader);
             _AudioBridge = pAudioBridge;
             RoomId = pRoomId;
         }
@@ -53,7 +52,6 @@ namespace WebRtcVoice
 
         public async Task<bool> JoinRoom(JanusViewerSession pVSession)
         {
-            m_log.DebugFormat("{0} JoinRoom. Entered", LogHeader);
             bool ret = false;
             try
             {

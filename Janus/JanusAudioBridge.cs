@@ -28,7 +28,7 @@ namespace WebRtcVoice
         // Wrapper around the session connection to Janus-gateway
         public JanusAudioBridge(JanusSession pSession) : base(pSession, "janus.plugin.audiobridge")
         {
-            m_log.DebugFormat("{0} JanusAudioBridge constructor", LogHeader);
+            // m_log.DebugFormat("{0} JanusAudioBridge constructor", LogHeader);
         }
 
         public override void Dispose()

@@ -68,23 +68,16 @@ namespace WebRtcVoice
         // ISharedRegionModule.Initialize
         public void Initialise(IConfigSource config)
         {
-            m_log.Info($"{logHeader}: RegionVoiceModule initializing");
             m_Config = config.Configs["WebRtcVoice"];
-            if (m_Config is null) return;
-
-            m_Enabled = m_Config.GetBoolean("Enabled", false);
-            if (!m_Enabled) return;
-
-            _MessageDetails = m_Config.GetBoolean("MessageDetails", false);
-
-            try
+            if (m_Config is not null)
             {
-                m_log.Info($"{logHeader}: plugin enabled");
-            }
-            catch (Exception e)
-            {
-                m_log.ErrorFormat("{0}: plugin initialization failed: {1} {2}", logHeader, e.Message, e.StackTrace);
-                return;
+                m_Enabled = m_Config.GetBoolean("Enabled", false);
+                if (m_Enabled)
+                {
+                    _MessageDetails = m_Config.GetBoolean("MessageDetails", false);
+
+                    m_log.Info($"{logHeader}: enabled");
+                }
             }
         }
 
