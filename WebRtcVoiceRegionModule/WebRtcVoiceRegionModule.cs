@@ -31,6 +31,7 @@ using OSDMap = OpenMetaverse.StructuredData.OSDMap;
 
 using log4net;
 using Nini.Config;
+using OpenSim.Services.Interfaces;
 
 [assembly: Addin("WebRtcVoiceRegionModule", "1.0")]
 [assembly: AddinDependency("OpenSim.Region.Framework", OpenSim.VersionInfo.VersionNumber)]
@@ -112,10 +113,18 @@ namespace WebRtcVoice
         {
             if (m_Enabled)
             {
-                // Register for the region feature reporting so we can add 'webrtc'
+                // Register to report "webrtc" for region features
                 var sfm = scene.RequestModuleInterface<ISimulatorFeaturesModule>();
-                sfm.OnSimulatorFeaturesRequest += OnSimulatorFeatureRequestHandler;
-                m_log.DebugFormat("{0}: registering OnSimulatorFeatureRequestHandler", logHeader);
+                if (sfm is not null)
+                {
+                    m_log.DebugFormat("{0}: registering pOnSimulatorFeatureRequestHandler", logHeader);
+                    sfm.OnSimulatorFeaturesRequest += OnSimulatorFeatureRequestHandler;
+                }
+                // Register to report "webrtc" for login features
+                // Some viewer options default to the login features
+                var lsm = scene.RequestModuleInterface<ILoginService>();
+                if (lsm is not null)
+                    lsm.OnLoginResponse += OnLoginResponseHandler;
             }
         }
 
@@ -142,6 +151,12 @@ namespace WebRtcVoice
         {
             m_log.DebugFormat("{0}: setting VoiceServerType=webrtc for agent {1}", logHeader, agentID);
             features["VoiceServerType"] = "webrtc";
+        }
+
+        private void OnLoginResponseHandler(LoginResponse response)
+        {
+            m_log.DebugFormat("{0}: OnLoginResponseHandler called", logHeader);
+            response.AddAdditionalData("audio_config", "webrtc");
         }
 
         // <summary>
