@@ -32,6 +32,7 @@ using OSDMap = OpenMetaverse.StructuredData.OSDMap;
 using log4net;
 using Nini.Config;
 using OpenSim.Services.Interfaces;
+using System.Collections;
 
 [assembly: Addin("WebRtcVoiceRegionModule", "1.0")]
 [assembly: AddinDependency("OpenSim.Region.Framework", OpenSim.VersionInfo.VersionNumber)]
@@ -156,7 +157,10 @@ namespace WebRtcVoice
         private void OnLoginResponseHandler(LoginResponse response)
         {
             m_log.DebugFormat("{0}: OnLoginResponseHandler called", logHeader);
-            response.AddAdditionalData("audio_config", "webrtc");
+            response.AddAdditionalData("voice-config", new Hashtable()
+            {
+                { "VoiceServerType", "webrtc" }
+            });
         }
 
         // <summary>
