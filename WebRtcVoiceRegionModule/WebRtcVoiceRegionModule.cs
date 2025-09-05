@@ -161,6 +161,7 @@ namespace WebRtcVoice
             {
                 { "VoiceServerType", "webrtc" }
             });
+            m_log.DebugFormat("{0}: OnLoginResponseHandler login response: {1}", logHeader, response.ToOSDMap().ToString());
         }
 
         // <summary>
