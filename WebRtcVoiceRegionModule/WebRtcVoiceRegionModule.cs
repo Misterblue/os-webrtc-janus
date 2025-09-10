@@ -157,11 +157,16 @@ namespace WebRtcVoice
         private void OnLoginResponseHandler(LoginResponse response)
         {
             m_log.DebugFormat("{0}: OnLoginResponseHandler called", logHeader);
-            response.AddAdditionalData("voice-config", new Hashtable()
-            {
-                { "VoiceServerType", "webrtc" }
-            });
-            m_log.DebugFormat("{0}: OnLoginResponseHandler login response: {1}", logHeader, response.ToOSDMap().ToString());
+            var voiceConfig = new Hashtable();
+            voiceConfig["VoiceServerType"] = "webrtc";
+
+            // var stuns = m_Config.GetString("StunServers", "stun3.l.google.com:19302");
+            var stuns = m_Config.GetString("StunServers", String.Empty);
+            if (!string.IsNullOrWhiteSpace(stuns))
+                voiceConfig["VoiceStunServers"] = stuns;
+            response.AddAdditionalData("voice-config", voiceConfig);
+
+            // m_log.DebugFormat("{0}: OnLoginResponseHandler login response: {1}", logHeader, response.ToOSDMap().ToString());
         }
 
         // <summary>
@@ -206,6 +211,11 @@ namespace WebRtcVoice
                     {
                         ParcelVoiceInfoRequest(httpRequest, httpResponse, agentID, scene);
                     }));
+            caps.RegisterSimpleHandler("ChatSessionRequest",
+                    new SimpleStreamHandler("/" + UUID.Random(), delegate (IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
+                    {
+                        ChatSessionRequest(httpRequest, httpResponse, agentID, scene);
+                    }));
 
         }
 
@@ -229,17 +239,7 @@ namespace WebRtcVoice
             }
 
             // Deserialize the request. Convert the LLSDXml to OSD for our use
-            OSDMap map = null;
-            using (Stream inputStream = request.InputStream)
-            {
-                if (inputStream.Length > 0)
-                {
-                    OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
-                    if (_MessageDetails) m_log.DebugFormat("{0}[ProvisionVoice]: Request: {1}", logHeader, tmp.ToString());
-                    map = tmp as OSDMap;
-                }
-            }
-
+            OSDMap map = GetOSDMapFromRequest(request);
             if (map is null)
             {
                 m_log.ErrorFormat("{0}[ProvisionVoice]: No request data found. Agent={1}", logHeader, agentID.ToString());
@@ -292,20 +292,7 @@ namespace WebRtcVoice
             }
 
             // Deserialize the request. Convert the LLSDXml to OSD for our use
-            OSDMap map = null;
-            using (Stream inputStream = request.InputStream)
-            {
-                if (inputStream.Length > 0)
-                {
-                    OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
-                    if (_MessageDetails) m_log.DebugFormat("{0}[VoiceSignalingRequest]: Request: {1}", logHeader, tmp.ToString());
-
-                    if (tmp is OSDMap)
-                    {
-                        map = (OSDMap)tmp;
-                    }
-                }
-            }
+            OSDMap map = GetOSDMapFromRequest(request);
             if (map is null)
             {
                 m_log.ErrorFormat("{0}[VoiceSignalingRequest]: No request data found. Agent={1}", logHeader, agentID.ToString());
@@ -362,14 +349,14 @@ namespace WebRtcVoice
 
             response.StatusCode = (int)HttpStatusCode.OK;
 
-            m_log.DebugFormat(
-                "{0}[PARCELVOICE]: ParcelVoiceInfoRequest() on {1} for {2}",
+            m_log.DebugFormat("{0}: ParcelVoiceInfoRequest() on {1} for {2}",
                 logHeader, scene.RegionInfo.RegionName, agentID);
 
             ScenePresence avatar = scene.GetScenePresence(agentID);
             if(avatar == null)
             {
                 response.RawBuffer = Util.UTF8.GetBytes("<llsd>undef</llsd>");
+                m_log.ErrorFormat("{0}: ParcelVoiceInfoRequest() avatar \"{1}\" not found", logHeader, agentID);
                 return;
             }
 
@@ -386,8 +373,8 @@ namespace WebRtcVoice
 
                 if (null == scene.LandChannel)
                 {
-                    m_log.ErrorFormat("region \"{0}\": avatar \"{1}\": land data not yet available",
-                                                      scene.RegionInfo.RegionName, avatarName);
+                    m_log.ErrorFormat("{0} ParcelVoiceInfoRequest: region \"{1}\": avatar \"{2}\": land data not yet available",
+                                                      logHeader, scene.RegionInfo.RegionName, avatarName);
                     response.RawBuffer = Util.UTF8.GetBytes("<llsd>undef</llsd>");
                     return;
                 }
@@ -401,7 +388,7 @@ namespace WebRtcVoice
                 // TODO: EstateSettings don't seem to get propagated...
                  if (!scene.RegionInfo.EstateSettings.AllowVoice)
                  {
-                     m_log.DebugFormat("{0}[PARCELVOICE]: region \"{1}\": voice not enabled in estate settings",
+                     m_log.DebugFormat("{0}: ParcelVoiceInfoRequest: region \"{1}\": voice not enabled in estate settings",
                                        logHeader, scene.RegionInfo.RegionName);
                     channelUri = String.Empty;
                 }
@@ -427,6 +414,10 @@ namespace WebRtcVoice
                 LLSDxmlEncode2.AddEndMap(lsl);
                 LLSDxmlEncode2.AddEndMap(lsl);
 
+                m_log.DebugFormat(
+                    "{0}: ParcelVoiceInfoRequest() returning: {1}",
+                    logHeader, lsl.ToString());
+
                 response.RawBuffer= LLSDxmlEncode2.EndToBytes(lsl);
             }
             catch (Exception e)
@@ -438,6 +429,68 @@ namespace WebRtcVoice
 
                 response.RawBuffer = Util.UTF8.GetBytes("<llsd>undef</llsd>");
             }
+        }
+
+        /// <summary>
+        /// Callback for a client request for a private chat channel
+        /// </summary>
+        /// <param name="scene">current scene object of the client</param>
+        /// <param name="request"></param>
+        /// <param name="path"></param>
+        /// <param name="param"></param>
+        /// <param name="agentID"></param>
+        /// <param name="caps"></param>
+        /// <returns></returns>
+        public void ChatSessionRequest(IOSHttpRequest request, IOSHttpResponse response, UUID agentID, Scene scene)
+        {
+            if (request.HttpMethod != "POST")
+            {
+                response.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
+            
+            OSDMap map = GetOSDMapFromRequest(request);
+
+            // for now, just return success
+            OSD resp = new OSDBoolean(true);
+
+            m_log.DebugFormat("{0}[ChatSessionRequest]: Received {1}, Response: {2}",
+                    logHeader, map.ToString(),resp.ToString());
+
+            // Convert the OSD to LLSDXml for the response
+            string xmlResp = OSDParser.SerializeLLSDXmlString(resp);
+
+            response.RawBuffer = Util.UTF8.GetBytes(xmlResp);
+            response.StatusCode = (int)HttpStatusCode.OK;
+        }
+        
+        // Parse the request body into an OSDMap.
+        // Will return 'null' if there is no body or if the body is not valid LLSD.
+        private OSDMap GetOSDMapFromRequest(IOSHttpRequest request)
+        {
+            OSDMap map = null;
+            using (Stream inputStream = request.InputStream)
+            {
+                if (inputStream.Length > 0)
+                {
+                    try
+                    {
+                        OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
+                        if (_MessageDetails) m_log.DebugFormat("{0}[VoiceSignalingRequest]: Request: {1}", logHeader, tmp.ToString());
+
+                        if (tmp is OSDMap)
+                        {
+                            map = (OSDMap)tmp;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        m_log.ErrorFormat("{0}[GetOSDMapFromRequest]: Exception deserializing request: {1}", logHeader, e.ToString());
+                        map = null;
+                    }
+                }
+            }
+            return map;
         }
 
         // NOTE NOTE!! This is code from the FreeSwitch module. It is not clear if this is correct for WebRtc.
