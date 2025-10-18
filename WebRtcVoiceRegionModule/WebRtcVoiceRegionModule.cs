@@ -152,21 +152,38 @@ namespace WebRtcVoice
         {
             m_log.DebugFormat("{0}: setting VoiceServerType=webrtc for agent {1}", logHeader, agentID);
             features["VoiceServerType"] = "webrtc";
+            
+            // If STUN servers are configured, add them too.
+            if (TryGetStunServers(out string stuns))
+                features["VoiceStunServers"] = stuns;
         }
 
         private void OnLoginResponseHandler(LoginResponse response)
         {
-            m_log.DebugFormat("{0}: OnLoginResponseHandler called", logHeader);
-            var voiceConfig = new Hashtable();
-            voiceConfig["VoiceServerType"] = "webrtc";
+            if (m_Enabled)
+            {
+                m_log.DebugFormat("{0}: OnLoginResponseHandler called", logHeader);
+                var voiceConfig = new Hashtable();
+                voiceConfig["VoiceServerType"] = "webrtc";
 
-            // var stuns = m_Config.GetString("StunServers", "stun3.l.google.com:19302");
-            var stuns = m_Config.GetString("StunServers", String.Empty);
-            if (!string.IsNullOrWhiteSpace(stuns))
-                voiceConfig["VoiceStunServers"] = stuns;
-            response.AddAdditionalData("voice-config", voiceConfig);
+                if (TryGetStunServers(out string stuns))
+                    voiceConfig["VoiceStunServers"] = stuns;
+
+                response.AddAdditionalData("voice-config", voiceConfig);
+            }
 
             // m_log.DebugFormat("{0}: OnLoginResponseHandler login response: {1}", logHeader, response.ToOSDMap().ToString());
+        }
+
+        // Get the parameter list of STUN servers. Returns false if none are configured.
+        private bool TryGetStunServers(out string stunServers)
+        {
+            stunServers = String.Empty;
+            if (m_Config is not null)
+            {
+                stunServers = m_Config.GetString("StunServers", String.Empty);
+            }
+            return !string.IsNullOrWhiteSpace(stunServers);
         }
 
         // <summary>
@@ -195,24 +212,24 @@ namespace WebRtcVoice
                 logHeader, agentID, caps, scene.RegionInfo.RegionName);
 
             caps.RegisterSimpleHandler("ProvisionVoiceAccountRequest",
-                    new SimpleStreamHandler("/" + UUID.Random(), (IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) =>
+                    new SimpleStreamHandler("/webrtc/" + UUID.Random(), (IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) =>
                     {
                         ProvisionVoiceAccountRequest(httpRequest, httpResponse, agentID, scene);
                     }));
 
             caps.RegisterSimpleHandler("VoiceSignalingRequest",
-                    new SimpleStreamHandler("/" + UUID.Random(), (IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) =>
+                    new SimpleStreamHandler("/webrtc/" + UUID.Random(), (IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) =>
                     {
                         VoiceSignalingRequest(httpRequest, httpResponse, agentID, scene);
                     }));
 
             caps.RegisterSimpleHandler("ParcelVoiceInfoRequest",
-                    new SimpleStreamHandler("/" + UUID.Random(), (IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) =>
+                    new SimpleStreamHandler("/webrtc/" + UUID.Random(), (IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) =>
                     {
                         ParcelVoiceInfoRequest(httpRequest, httpResponse, agentID, scene);
                     }));
             caps.RegisterSimpleHandler("ChatSessionRequest",
-                    new SimpleStreamHandler("/" + UUID.Random(), delegate (IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
+                    new SimpleStreamHandler("/webrtc/" + UUID.Random(), delegate (IOSHttpRequest httpRequest, IOSHttpResponse httpResponse)
                     {
                         ChatSessionRequest(httpRequest, httpResponse, agentID, scene);
                     }));
