@@ -29,13 +29,17 @@ namespace WebRtcVoice
             AgentId = pAgentId;
             ViewerSessionID = UUID.Random().ToString();
             VoiceService = pVoiceService;
-            
+
         }
         public string ViewerSessionID { get; set; }
-        public IWebRtcVoiceService VoiceService { get ; set; }
-        public string VoiceServiceSessionId { get => throw new System.NotImplementedException(); set => throw new System.NotImplementedException(); }
-        public UUID RegionId { get ; set; }
-        public UUID AgentId { get ; set; }
+        public IWebRtcVoiceService VoiceService { get; set; }
+        public string VoiceServiceSessionId
+        {
+            get => throw new System.NotImplementedException();
+            set => throw new System.NotImplementedException();
+        }
+        public UUID RegionId { get; set; }
+        public UUID AgentId { get; set; }
 
         // =====================================================================
         // ViewerSessions hold the connection information for the client connection through to the voice service.
@@ -68,7 +72,7 @@ namespace WebRtcVoice
                 {
                     pViewerSession = sessions.First().Value;
                     return true;
-                }   
+                }
                 pViewerSession = null;
                 return false;
             }

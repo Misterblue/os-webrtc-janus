@@ -16,6 +16,10 @@ using OMV = OpenMetaverse;
 
 namespace WebRtcVoice
 {
+    /// <summary>
+    /// This is the interface for the viewer session. It is used to store the
+    /// state of the viewer session and to disconnect the session when needed.
+    /// </summary>
     public interface IVoiceViewerSession
     {
         // This ID is passed to and from the viewer to identify the session

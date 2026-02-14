@@ -96,7 +96,7 @@ namespace WebRtcVoice
                     {
                         OnRegisterCaps(scene, agentID, caps);
                     };
-                
+
             }
         }
 
@@ -187,6 +187,12 @@ namespace WebRtcVoice
                         ParcelVoiceInfoRequest(httpRequest, httpResponse, agentID, scene);
                     }));
 
+            caps.RegisterSimpleHandler("ChatSessionRequest",
+                    new SimpleStreamHandler("/" + UUID.Random(), (IOSHttpRequest httpRequest, IOSHttpResponse httpResponse) =>
+                    {
+                        ChatSessionRequest(httpRequest, httpResponse, agentID, scene);
+                    }));
+
         }
 
         /// <summary>
@@ -201,7 +207,7 @@ namespace WebRtcVoice
         /// <returns></returns>
         public void ProvisionVoiceAccountRequest(IOSHttpRequest request, IOSHttpResponse response, UUID agentID, Scene scene)
         {
-            if(request.HttpMethod != "POST")
+            if (request.HttpMethod != "POST")
             {
                 m_log.DebugFormat("[{0}][ProvisionVoice]: Not a POST request. Agent={1}", logHeader, agentID.ToString());
                 response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -209,17 +215,7 @@ namespace WebRtcVoice
             }
 
             // Deserialize the request. Convert the LLSDXml to OSD for our use
-            OSDMap map = null;
-            using (Stream inputStream = request.InputStream)
-            {
-                if (inputStream.Length > 0)
-                {
-                    OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
-                    if (_MessageDetails) m_log.DebugFormat("{0}[ProvisionVoice]: Request: {1}", logHeader, tmp.ToString());
-                    map = tmp as OSDMap;
-                }
-            }
-
+            OSDMap map = BodyToMap(request, "[ProvisionVoiceAccountRequest]");
             if (map is null)
             {
                 m_log.ErrorFormat("{0}[ProvisionVoice]: No request data found. Agent={1}", logHeader, agentID.ToString());
@@ -264,7 +260,7 @@ namespace WebRtcVoice
 
         public void VoiceSignalingRequest(IOSHttpRequest request, IOSHttpResponse response, UUID agentID, Scene scene)
         {
-            if(request.HttpMethod != "POST")
+            if (request.HttpMethod != "POST")
             {
                 m_log.ErrorFormat("[{0}][VoiceSignaling]: Not a POST request. Agent={1}", logHeader, agentID.ToString());
                 response.StatusCode = (int)HttpStatusCode.NotFound;
@@ -272,20 +268,7 @@ namespace WebRtcVoice
             }
 
             // Deserialize the request. Convert the LLSDXml to OSD for our use
-            OSDMap map = null;
-            using (Stream inputStream = request.InputStream)
-            {
-                if (inputStream.Length > 0)
-                {
-                    OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
-                    if (_MessageDetails) m_log.DebugFormat("{0}[VoiceSignalingRequest]: Request: {1}", logHeader, tmp.ToString());
-
-                    if (tmp is OSDMap)
-                    {
-                        map = (OSDMap)tmp;
-                    }
-                }
-            }
+            OSDMap map = BodyToMap(request, "[VoiceSignalingRequest]");
             if (map is null)
             {
                 m_log.ErrorFormat("{0}[VoiceSignalingRequest]: No request data found. Agent={1}", logHeader, agentID.ToString());
@@ -321,6 +304,90 @@ namespace WebRtcVoice
             return;
         }
 
+        /// <summary>
+        /// Callback for a client request for ChatSessionRequest.
+        /// The viewer sends this request when the user tries to start a P2P text or voice session
+        /// with another user. We need to generate a new session ID and return it to the client.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="response"></param>
+        /// <param name="agentID"></param>
+        /// <param name="scene"></param>
+        public void ChatSessionRequest(IOSHttpRequest request, IOSHttpResponse response, UUID agentID, Scene scene)
+        {
+            m_log.DebugFormat("{0}: ChatSessionRequest received for agent {1} in scene {2}", logHeader, agentID, scene.RegionInfo.RegionName);
+            if (request.HttpMethod != "POST")
+            {
+                response.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
+
+            if (!scene.TryGetScenePresence(agentID, out ScenePresence sp) || sp.IsDeleted)
+            {
+                response.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
+
+            OSDMap reqmap = BodyToMap(request, "[ChatSessionRequest]");
+            if (reqmap is null)
+            {
+                response.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
+
+            m_log.Debug($"[WebRTC] ChatSessionRequest");
+
+            if (!reqmap.TryGetString("method", out string method))
+            {
+                response.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
+
+            if (!reqmap.TryGetUUID("session-id", out UUID sessionID))
+            {
+                response.StatusCode = (int)HttpStatusCode.NotFound;
+                return;
+            }
+
+            switch (method.ToLower())
+            {
+                // Several different method requests that we don't know how to handle.
+                // Just return OK for now.
+                case "decline p2p voice":
+                case "decline invitation":
+                case "start conference":
+                case "fetch history":
+                    response.StatusCode = (int)HttpStatusCode.OK;
+                    break;
+                // Asking to start a P2P voice session. We need to generate a new session ID and return
+                //     it to the client in a ChatterBoxSessionStartReply event.
+                case "start p2p voice":
+                    UUID newSessionID;
+                    if (reqmap.TryGetUUID("params", out UUID otherID))
+                        newSessionID = new(otherID.ulonga ^ agentID.ulonga, otherID.ulongb ^ agentID.ulongb);
+                    else
+                        newSessionID = UUID.Random();
+
+                    IEventQueue queue = scene.RequestModuleInterface<IEventQueue>();
+                    queue.ChatterBoxSessionStartReply(
+                            newSessionID,
+                            OSD.FromString(sp.Name),
+                            2,
+                            false,
+                            true,
+                            sessionID,
+                            true,
+                            string.Empty,
+                            agentID);
+
+                    response.StatusCode = (int)HttpStatusCode.OK;
+                    break;
+                default:
+                    response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    break;
+            }
+        }
+
         // NOTE NOTE!! This is code from the FreeSwitch module. It is not clear if this is correct for WebRtc.
         /// <summary>
         /// Callback for a client request for ParcelVoiceInfo
@@ -347,7 +414,7 @@ namespace WebRtcVoice
                 logHeader, scene.RegionInfo.RegionName, agentID);
 
             ScenePresence avatar = scene.GetScenePresence(agentID);
-            if(avatar == null)
+            if (avatar == null)
             {
                 response.RawBuffer = Util.UTF8.GetBytes("<llsd>undef</llsd>");
                 return;
@@ -379,22 +446,22 @@ namespace WebRtcVoice
                 LandData land = scene.GetLandData(avatar.AbsolutePosition);
 
                 // TODO: EstateSettings don't seem to get propagated...
-                 if (!scene.RegionInfo.EstateSettings.AllowVoice)
-                 {
-                     m_log.DebugFormat("{0}[PARCELVOICE]: region \"{1}\": voice not enabled in estate settings",
-                                       logHeader, scene.RegionInfo.RegionName);
+                if (!scene.RegionInfo.EstateSettings.AllowVoice)
+                {
+                    m_log.DebugFormat("{0}[PARCELVOICE]: region \"{1}\": voice not enabled in estate settings",
+                                      logHeader, scene.RegionInfo.RegionName);
                     channelUri = String.Empty;
                 }
                 else
 
-                if (!scene.RegionInfo.EstateSettings.TaxFree && (land.Flags & (uint)ParcelFlags.AllowVoiceChat) == 0)
-                {
-                    channelUri = String.Empty;
-                }
-                else
-                {
-                    channelUri = ChannelUri(scene, land);
-                }
+                    if (!scene.RegionInfo.EstateSettings.TaxFree && (land.Flags & (uint)ParcelFlags.AllowVoiceChat) == 0)
+                    {
+                        channelUri = String.Empty;
+                    }
+                    else
+                    {
+                        channelUri = ChannelUri(scene, land);
+                    }
 
                 // fast foward encode
                 osUTF8 lsl = LLSDxmlEncode2.Start(512);
@@ -407,7 +474,7 @@ namespace WebRtcVoice
                 LLSDxmlEncode2.AddEndMap(lsl);
                 LLSDxmlEncode2.AddEndMap(lsl);
 
-                response.RawBuffer= LLSDxmlEncode2.EndToBytes(lsl);
+                response.RawBuffer = LLSDxmlEncode2.EndToBytes(lsl);
             }
             catch (Exception e)
             {
@@ -469,12 +536,35 @@ namespace WebRtcVoice
             {
                 if (!m_ParcelAddress.ContainsKey(land.GlobalID.ToString()))
                 {
-                    m_ParcelAddress.Add(land.GlobalID.ToString(),channelUri);
+                    m_ParcelAddress.Add(land.GlobalID.ToString(), channelUri);
                 }
             }
 
             return channelUri;
         }
+
+        /// <summary>
+        /// Convert the LLSDXml body of the request to an OSDMap for easier handling.
+        /// Also logs the request if message details is enabled.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="pCaller"></param>
+        /// <returns>'null' if the request body is empty or cannot be deserialized</returns>
+        private OSDMap BodyToMap(IOSHttpRequest request, string pCaller)
+        {
+            OSDMap? map = null;
+            using (Stream inputStream = request.InputStream)
+            {
+                if (inputStream.Length > 0)
+                {
+                    OSD tmp = OSDParser.DeserializeLLSDXml(inputStream);
+                    if (_MessageDetails) m_log.DebugFormat("{0} BodyToMap: Request: {1}", pCaller, tmp.ToString());
+                    map = tmp as OSDMap;
+                }
+            }
+            return map;
+        }
+
 
     }
 }
