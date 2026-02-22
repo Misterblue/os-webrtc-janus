@@ -1,5 +1,13 @@
 # os-webrtc-janus
 
+February 22, 2026: This specific distribution of os-webrtc-janus is licensed
+under the BSD 3-Clause License. The original source is maintained by the
+author at [os-webrtc-janus](https://github.com/Misterblue/os-webrtc-janus)
+under the Mozilla Public License 2.0.
+As the sole copyright holder, the author has elected to provide this snapshot
+under the BSD 3-Clause terms for compatibility with
+[OpenSimulator](http://opensimulator.org).
+
 Addon-module for [OpenSimulator] to provide webrtc voice support
 using Janus-gateway.
 
